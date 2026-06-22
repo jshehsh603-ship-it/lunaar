@@ -1,0 +1,355 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import confetti from 'canvas-confetti';
+import { 
+  User, Shield, Sparkles, Heart, Globe, Star, Check, Camera, 
+  Settings, Award, RefreshCw, Mail, Calendar, ArrowLeft, Trash2
+} from 'lucide-react';
+import audioSynth from '../../components/AudioEffects';
+import { COUNTRIES } from '../../constants/countries';
+
+
+interface MatchItem {
+  id: string;
+  partnerName: string;
+  partnerCountry: string;
+  duration: string;
+  date: string;
+}
+
+function ProfileContent() {
+  const router = useRouter();
+
+  // Profile data
+  const [profile, setProfile] = useState<any>(null);
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'everyone'>('everyone');
+  const [country, setCountry] = useState('World');
+  const [isPremium, setIsPremium] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Stats info
+  const [followers, setFollowers] = useState(48);
+  const [following, setFollowing] = useState(62);
+  const [totalMatches, setTotalMatches] = useState(189);
+
+
+
+  // Load profile from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedUserStr = localStorage.getItem('lunaar_user');
+    if (savedUserStr) {
+      try {
+        const parsed = JSON.parse(savedUserStr);
+        setProfile(parsed);
+        setUsername(parsed.username || '');
+        setBio(parsed.bio || '');
+        setGender(parsed.gender || 'everyone');
+        setCountry(parsed.country || 'World');
+        setIsPremium(parsed.isPremium || false);
+      } catch (e) {}
+    }
+  }, []);
+
+  // Handle avatar image simulation upload
+  const handleAvatarChange = async () => {
+    audioSynth.playClick();
+    setUploading(true);
+    try {
+      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
+        ? 'http://localhost:3001'
+        : window.location.origin;
+      const res = await fetch(`${backendUrl}/api/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = {
+          ...profile,
+          avatarUrl: data.url
+        };
+        setProfile(updated);
+        localStorage.setItem('lunaar_user', JSON.stringify(updated));
+        confetti({ particleCount: 30, spread: 40 });
+      }
+    } catch (e) {
+      // Fallback local seed
+      const updated = {
+        ...profile,
+        avatarUrl: `https://api.dicebear.com/7.x/lorelei/svg?seed=${username}_${Math.random()}`
+      };
+      setProfile(updated);
+      localStorage.setItem('lunaar_user', JSON.stringify(updated));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Save changes
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    audioSynth.playClick();
+    if (!profile) return;
+
+    const updated = {
+      ...profile,
+      username,
+      bio,
+      gender,
+      country
+    };
+
+    setProfile(updated);
+    localStorage.setItem('lunaar_user', JSON.stringify(updated));
+    
+    // Play sound notification
+    audioSynth.playMessage();
+    
+    alert('Profile saved successfully!');
+  };
+
+  // PayPal buy-flow is now integrated directly in the checkout buttons below
+
+
+
+  if (!profile) {
+    return (
+      <div className="flex-grow flex items-center justify-center bg-brand-darkBg text-white">
+        <RefreshCw className="w-8 h-8 animate-spin text-brand-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-grow flex flex-col bg-brand-darkBg pb-16 selection:bg-brand-primary selection:text-white relative">
+      {/* Ambient backgrounds */}
+      <div className="absolute top-[-10%] right-[-10%] w-[35vw] h-[35vw] rounded-full bg-brand-primary/5 blur-[90px] pointer-events-none"></div>
+
+      {/* HEADER SECTION */}
+      <header className="h-20 flex items-center justify-between px-6 premium-header sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => { audioSynth.playClick(); router.push('/'); }}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <span className="font-extrabold text-xl">User Profile Dashboard</span>
+        </div>
+
+        {isPremium && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black tracking-wider uppercase">
+            <Star className="w-3.5 h-3.5 fill-amber-400" />
+            VIP Member
+          </div>
+        )}
+      </header>
+
+      {/* CORE WORKSPACE CONTENT */}
+      <main className="max-w-6xl mx-auto px-6 py-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+        
+        {/* Left column (Avatar and general account highlights) */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col items-center text-center relative overflow-hidden">
+            {/* VIP Glow badge */}
+            {isPremium && (
+              <div className="absolute inset-0 border border-amber-500/20 rounded-3xl pointer-events-none animate-pulse"></div>
+            )}
+
+            {/* Avatar container */}
+            <div className="relative group/avatar cursor-pointer mb-4">
+              <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-white/10 bg-slate-900 shadow-xl relative flex items-center justify-center">
+                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <RefreshCw className="w-6 h-6 animate-spin text-white" />
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={handleAvatarChange}
+                className="absolute bottom-1 right-1 p-2 rounded-xl bg-brand-primary text-white border border-brand-darkBg group-hover/avatar:scale-105 transition"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* User Title display */}
+            <h2 className="font-black text-2xl flex items-center gap-1.5">
+              {username || 'Stranger'}
+              {isPremium && <Award className="w-5 h-5 text-amber-400" />}
+            </h2>
+            <p className="text-slate-500 text-xs mt-1 max-w-[200px] leading-relaxed break-words">
+              {bio || 'Add a brief bio description below to tell matches about yourself.'}
+            </p>
+
+            <div className="h-px bg-white/5 w-full my-5"></div>
+
+            {/* Statistics dashboard */}
+            <div className="grid grid-cols-3 gap-4 w-full">
+              <div className="flex flex-col">
+                <span className="font-extrabold text-white text-lg">{followers}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Followers</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-white text-lg">{following}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Following</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-white text-lg">{totalMatches}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Matches</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Settings / System details cards */}
+          <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col gap-4">
+            <h3 className="font-bold text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Settings className="w-4 h-4 text-brand-primary" /> Settings & System
+            </h3>
+            
+            <div className="flex flex-col gap-3 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span className="text-slate-400">Account ID</span>
+                <span className="font-mono text-slate-300 select-all">{profile.id}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span className="text-slate-400">User Registered</span>
+                <span className="text-slate-300">June 15, 2026</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-400">Match Server Connection</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Active
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right column (Edit forms & Match history logs) */}
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          
+          {/* Edit Profile Form */}
+          <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/10">
+            <h3 className="font-extrabold text-xl mb-6">Edit Profile Details</h3>
+            
+            <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Username */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Display Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter display name"
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
+                  />
+                </div>
+
+                {/* Country */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">My Country Location</label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 border border-white/5 text-white outline-none focus:border-brand-primary"
+                  >
+                    <option value="World">World (No Filter)</option>
+                    {COUNTRIES.map(c => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Biography */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biographical Summary</label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Introduce yourself to strangers here..."
+                  rows={3}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none resize-none"
+                />
+              </div>
+
+              {/* Gender */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">My Gender Identity</label>
+                <div className="flex gap-4">
+                  {(['male', 'female', 'everyone'] as const).map(g => (
+                    <label key={g} className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-semibold capitalize">
+                      <input
+                        type="radio"
+                        name="my-gender"
+                        checked={gender === g}
+                        onChange={() => setGender(g)}
+                        className="text-brand-primary focus:ring-brand-primary"
+                      />
+                      <span>{g}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="py-3 px-6 rounded-xl bg-white text-brand-darkBg hover:bg-slate-200 transition font-black text-xs w-fit"
+              >
+                Save Profile Changes
+              </button>
+            </form>
+          </div>
+
+
+
+          {/* Pricing Grid removed - payment checkout is on a separate /upgrade route */}
+        </div>
+
+      </main>
+
+      {/* FOOTER */}
+      <footer className="relative z-10 w-full py-12 border-t border-white/5 bg-slate-950/80 text-sm text-slate-500 mt-auto">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col gap-8">
+          {/* Horizontal Links Footer (As requested by user) */}
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-bold text-slate-400">
+            <a href="/" className="text-brand-primary underline hover:text-brand-primaryHover transition">Home</a>
+            <a href="/terms" className="hover:text-white transition">Terms</a>
+            <a href="/privacy" className="hover:text-white transition">Privacy</a>
+            <a href="#" className="hover:text-white transition">2257</a>
+            <a href="/abuse" className="hover:text-white transition">Abuse</a>
+            <a href="/billing-support" className="hover:text-white transition">Billing Support</a>
+            <a href="#" className="hover:text-white transition">DMCA Policy</a>
+            <a href="/contact" className="hover:text-white transition">Contact Us</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white font-bold">
+        Loading...
+      </div>
+    }>
+      <ProfileContent />
+    </React.Suspense>
+  );
+}

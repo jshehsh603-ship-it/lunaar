@@ -1,0 +1,323 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 15, 23, 42; /* #0F172A */
+  --background-end-rgb: 17, 24, 39;    /* #111827 */
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphic presets */
+.glass-panel {
+  background: rgba(15, 5, 20, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 59, 59, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px -12px rgba(255, 59, 59, 0.2);
+}
+
+.glass-input {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-input:focus {
+  border-color: #FF3B3B;
+  box-shadow: 0 0 0 2px rgba(255, 59, 59, 0.2);
+  outline: none;
+}
+
+/* Premium Animations */
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.45;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 8s infinite ease-in-out;
+}
+
+@keyframes match-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 20px rgba(255, 59, 59, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 59, 59, 0);
+  }
+}
+
+.animate-match-pulse {
+  animation: match-pulse 2s infinite;
+}
+
+@keyframes scan-line {
+  0% {
+    top: 0%;
+  }
+  50% {
+    top: 100%;
+  }
+  100% {
+    top: 0%;
+  }
+}
+
+.animate-scan-line {
+  position: relative;
+}
+
+.animate-scan-line::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(to bottom, rgba(255, 59, 59, 0), rgba(255, 59, 59, 0.7), rgba(255, 59, 59, 0));
+  left: 0;
+  animation: scan-line 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 59, 59, 0.6);
+}
+
+/* Hide raw video elements until active, but show canvas loader */
+video::-webkit-media-controls {
+  display: none !important;
+}
+
+/* Premium Styling System */
+
+@keyframes border-rotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.premium-glow-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1.5rem; /* 24px */
+}
+
+.premium-glow-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 1.5rem;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 59, 59, 0.45),
+    rgba(168, 85, 247, 0.45),
+    rgba(236, 72, 153, 0.45),
+    rgba(255, 59, 59, 0.45)
+  );
+  background-size: 300% 300%;
+  -webkit-mask: 
+     linear-gradient(#fff 0 0) content-box, 
+     linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  animation: border-rotate 8s infinite linear;
+}
+
+.premium-glow-button {
+  background: #FF3B3B;
+  box-shadow: 0 4px 20px rgba(255, 59, 59, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-glow-button:hover {
+  background: #FF5A5A;
+  box-shadow: 0 6px 25px rgba(255, 59, 59, 0.3);
+  transform: translateY(-1px);
+}
+
+.premium-glow-button:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.premium-glowing-text {
+  text-shadow: 0 0 12px rgba(255, 59, 59, 0.3);
+}
+
+.premium-card-accent {
+  background: radial-gradient(circle at top right, rgba(255, 59, 59, 0.1), transparent 50%);
+}
+
+.premium-vip-button {
+  background: rgba(245, 158, 11, 0.03);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24; /* amber-400 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-vip-button:hover {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b; /* amber-500 */
+  transform: translateY(-0.5px);
+}
+
+.premium-vip-button:active {
+  background: rgba(245, 158, 11, 0.12);
+  transform: translateY(0px) scale(0.98);
+}
+
+.premium-signout-button {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #cbd5e1; /* slate-300 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-signout-button:hover {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171; /* red-400 */
+}
+
+.premium-signout-button:active {
+  transform: scale(0.98);
+}
+
+.premium-avatar-ring {
+  position: relative;
+  padding: 1.5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem; /* 12px */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-avatar-ring:hover {
+  background: #FF3B3B;
+  transform: scale(1.02);
+}
+
+.premium-header {
+  background: rgba(15, 5, 20, 0.75) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 59, 59, 0.15) !important;
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.5), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 40px -10px rgba(255, 59, 59, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Custom Scrollbar for white card popup */
+.premium-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+/* Firefox scrollbar compatibility */
+.premium-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
