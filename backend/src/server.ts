@@ -972,6 +972,11 @@ app.get('/api/bots', (req, res) => {
   res.json(db.getVideoBots());
 });
 
+// Root Health Check Endpoint
+app.get('/', (req, res) => {
+  res.json({ status: 'active', service: 'Lunaar Backend API' });
+});
+
 // Wildcard fallback
 app.get('*', (req, res) => {
   // Prevent falling back to index.html for static assets, API paths, or files with extensions
