@@ -100,7 +100,7 @@ export default function FriendsPage() {
 
     // Connect to Socket.IO Server
     const socketUrl = typeof window !== 'undefined'
-      ? (window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin)
+      ? (window.location.port === '3000' ? 'http://localhost:3001' : 'https://lunaar-backend.onrender.com')
       : 'http://localhost:3001';
     const socket = io(socketUrl, {
       transports: ['websocket'],
