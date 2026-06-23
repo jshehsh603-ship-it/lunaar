@@ -1,4 +1,6 @@
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 
 export interface VideoBot {
   id: string;
@@ -12,6 +14,10 @@ export interface VideoBot {
   createdAt: Date;
   chatEnabled: boolean;
   chatMessages: { text: string; delay: number }[];
+  isPremium: boolean;
+  skipAfterDuration: boolean;
+  skipDurationSeconds: number;
+  skipNearEnd: boolean;
 }
 
 export interface UserProfile {
@@ -49,6 +55,8 @@ export interface MatchHistory {
   timestamp: Date;
 }
 
+const BOTS_FILE_PATH = path.join(__dirname, '../uploads/bots.json');
+
 class DatabaseService extends EventEmitter {
   private users = new Map<string, UserProfile>();
   private friends = new Map<string, Set<string>>();
@@ -64,7 +72,36 @@ class DatabaseService extends EventEmitter {
   constructor() {
     super();
     this.seedInitialData();
+    this.loadBotsFromFile();
     this.startOnlineCountFluctuation();
+  }
+
+  private loadBotsFromFile() {
+    try {
+      if (fs.existsSync(BOTS_FILE_PATH)) {
+        const data = fs.readFileSync(BOTS_FILE_PATH, 'utf-8');
+        this.videoBots = JSON.parse(data);
+        console.log(`[Database] Loaded ${this.videoBots.length} video bots from persistent storage.`);
+      } else {
+        this.videoBots = [];
+      }
+    } catch (err) {
+      console.error('[Database] Error loading video bots from file:', err);
+      this.videoBots = [];
+    }
+  }
+
+  private saveBotsToFile() {
+    try {
+      const dir = path.dirname(BOTS_FILE_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(BOTS_FILE_PATH, JSON.stringify(this.videoBots, null, 2), 'utf-8');
+      console.log('[Database] Saved video bots to persistent storage.');
+    } catch (err) {
+      console.error('[Database] Error saving video bots to file:', err);
+    }
   }
 
   getOnlineCount(): number {
@@ -339,12 +376,17 @@ class DatabaseService extends EventEmitter {
 
   addVideoBot(bot: VideoBot): void {
     this.videoBots.push(bot);
+    this.saveBotsToFile();
   }
 
   deleteVideoBot(id: string): boolean {
     const initialLen = this.videoBots.length;
     this.videoBots = this.videoBots.filter(b => b.id !== id);
-    return this.videoBots.length < initialLen;
+    const deleted = this.videoBots.length < initialLen;
+    if (deleted) {
+      this.saveBotsToFile();
+    }
+    return deleted;
   }
 }
 

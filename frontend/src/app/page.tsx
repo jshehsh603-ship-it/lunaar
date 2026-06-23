@@ -37,6 +37,11 @@ export default function LandingPage() {
   const [username, setUsername] = useState('');
   const [avatar, setAvatar] = useState('');
   const [isPremium, setIsPremium] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   
   // Authentication states
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -358,6 +363,25 @@ export default function LandingPage() {
     };
   }, []);
 
+  const togglePremiumLocal = () => {
+    if (typeof window === 'undefined') return;
+    const savedUserStr = localStorage.getItem('lunaar_user');
+    if (savedUserStr) {
+      const userObj = JSON.parse(savedUserStr);
+      const nextVal = !userObj.isPremium;
+      userObj.isPremium = nextVal;
+      localStorage.setItem('lunaar_user', JSON.stringify(userObj));
+      setIsPremium(nextVal);
+      audioSynth.playMatch();
+      if (nextVal) {
+        confetti({ particleCount: 50, spread: 40 });
+      }
+      
+      const backendUrl = window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+      fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
+    }
+  };
+
   const handleAddTag = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = tagInput.trim().toLowerCase();
@@ -570,14 +594,36 @@ export default function LandingPage() {
             
             {/* Live stats online indicator header */}
             <div className="flex items-center justify-start border-b border-white/5 pb-2.5 mb-0.5">
-              {isPremium ? (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-primary/10 border border-brand-primary/20 text-[9px] font-bold text-brand-primary uppercase tracking-wide">
-                  <span>VIP Enabled</span>
-                </div>
+              {mounted && isDev ? (
+                isPremium ? (
+                  <button
+                    type="button"
+                    onClick={togglePremiumLocal}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-primary/10 border border-brand-primary/20 text-[9px] font-bold text-brand-primary uppercase tracking-wide cursor-pointer hover:bg-brand-primary/20 transition duration-300"
+                    title="Click to toggle VIP status"
+                  >
+                    👑 VIP Enabled (Click to toggle)
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={togglePremiumLocal}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-wide cursor-pointer hover:bg-white/10 transition duration-300"
+                    title="Click to toggle VIP status"
+                  >
+                    🆓 Free Account (Click for VIP Pass)
+                  </button>
+                )
               ) : (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                  <span>Free Account</span>
-                </div>
+                isPremium ? (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-primary/10 border border-brand-primary/20 text-[9px] font-bold text-brand-primary uppercase tracking-wide select-none">
+                    <span>VIP Enabled</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-wide select-none">
+                    <span>Free Account</span>
+                  </div>
+                )
               )}
             </div>
 

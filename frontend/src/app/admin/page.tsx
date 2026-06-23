@@ -89,6 +89,10 @@ export default function AdminPage() {
   const [newBotVideoUrl, setNewBotVideoUrl] = useState('');
   const [botChatEnabled, setBotChatEnabled] = useState(false);
   const [botChatMessages, setBotChatMessages] = useState<{ text: string; delay: number }[]>([]);
+  const [newBotIsPremium, setNewBotIsPremium] = useState(false);
+  const [newBotSkipAfterDuration, setNewBotSkipAfterDuration] = useState(false);
+  const [newBotSkipDurationSeconds, setNewBotSkipDurationSeconds] = useState(30);
+  const [newBotSkipNearEnd, setNewBotSkipNearEnd] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -97,6 +101,16 @@ export default function AdminPage() {
   const getApiUrl = () => {
     if (typeof window === 'undefined') return '';
     return window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+  };
+
+  const resolveBotVideoUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const backendUrl = typeof window !== 'undefined'
+      ? (window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin)
+      : 'http://localhost:3001';
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    return `${backendUrl}${cleanUrl}`;
   };
 
   const adminFetch = async (endpoint: string, options: RequestInit = {}) => {
@@ -333,7 +347,11 @@ export default function AdminPage() {
           interests: newBotInterests.split(',').map(i => i.trim()).filter(Boolean),
           videoUrl: newBotVideoUrl,
           chatEnabled: botChatEnabled,
-          chatMessages: botChatMessages
+          chatMessages: botChatMessages,
+          isPremium: newBotIsPremium,
+          skipAfterDuration: newBotSkipAfterDuration,
+          skipDurationSeconds: newBotSkipDurationSeconds,
+          skipNearEnd: newBotSkipNearEnd
         })
       });
       
@@ -351,6 +369,10 @@ export default function AdminPage() {
           setNewBotVideoUrl('');
           setBotChatEnabled(false);
           setBotChatMessages([]);
+          setNewBotIsPremium(false);
+          setNewBotSkipAfterDuration(false);
+          setNewBotSkipDurationSeconds(30);
+          setNewBotSkipNearEnd(false);
         } else {
           showToast(data.error || 'Failed to add Video Bot.');
         }
@@ -1187,6 +1209,18 @@ export default function AdminPage() {
                       </div>
 
                       <div className="flex flex-col gap-1.5">
+                        <label className="text-slate-400 font-bold uppercase tracking-wide text-[10px]">Tier Section</label>
+                        <select
+                          value={newBotIsPremium ? 'premium' : 'general'}
+                          onChange={(e) => setNewBotIsPremium(e.target.value === 'premium')}
+                          className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-primary transition font-bold"
+                        >
+                          <option value="general">General (Free) 🆓</option>
+                          <option value="premium">Premium (VIP) 👑</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
                         <label className="text-slate-400 font-bold uppercase tracking-wide text-[10px]">Country</label>
                         <select
                           value={newBotCountry}
@@ -1364,6 +1398,64 @@ export default function AdminPage() {
                         )}
                       </div>
 
+                      {/* Bot Auto-Skip Behavior */}
+                      <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2 flex flex-col gap-4">
+                        <div>
+                          <h4 className="text-sm font-extrabold uppercase text-white tracking-wider">Bot Auto-Skip Behavior</h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Control how this bot automatically skips/nexts users during simulated matchmaking.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Duration skip */}
+                          <div className="flex flex-col gap-3 bg-slate-900/40 border border-white/5 rounded-2xl p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Skip After Duration</span>
+                              <select
+                                value={newBotSkipAfterDuration ? 'on' : 'off'}
+                                onChange={(e) => setNewBotSkipAfterDuration(e.target.value === 'on')}
+                                className="bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-white font-bold text-xs focus:outline-none focus:border-brand-primary cursor-pointer"
+                              >
+                                <option value="off">Off ⚪</option>
+                                <option value="on">On ⏳</option>
+                              </select>
+                            </div>
+                            {newBotSkipAfterDuration && (
+                              <div className="flex flex-col gap-1.5 animate-fadeIn">
+                                <label className="text-slate-400 font-bold uppercase tracking-wide text-[10px]">Duration (Seconds)</label>
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={newBotSkipDurationSeconds}
+                                    onChange={(e) => setNewBotSkipDurationSeconds(Math.max(1, parseInt(e.target.value) || 30))}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-primary transition"
+                                  />
+                                  <span className="absolute right-4 top-3 text-[10px] font-bold text-slate-500 uppercase">Seconds</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Near end skip */}
+                          <div className="flex flex-col gap-3 bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex-grow justify-between">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auto-Skip Before Video Ends</span>
+                                <span className="text-[9px] text-slate-500 block mt-0.5">Automatically skips user 5 seconds before the video ends.</span>
+                              </div>
+                              <select
+                                value={newBotSkipNearEnd ? 'on' : 'off'}
+                                onChange={(e) => setNewBotSkipNearEnd(e.target.value === 'on')}
+                                className="bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-white font-bold text-xs focus:outline-none focus:border-brand-primary cursor-pointer"
+                              >
+                                <option value="off">Off ⚪</option>
+                                <option value="on">On ⏭️</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="md:col-span-3 flex justify-end mt-2">
                         <button
                           type="submit"
@@ -1384,15 +1476,17 @@ export default function AdminPage() {
                   </div>
 
                   {/* Active Bot Directory Table */}
-                  <div className="w-full overflow-x-auto rounded-3xl border border-white/5 bg-slate-950/20">
-                    <table className="w-full text-left text-xs border-collapse">
+                  <div className="w-full overflow-x-auto rounded-3xl border border-white/5 bg-slate-950/20 premium-scrollbar">
+                    <table className="w-full text-left text-xs border-collapse min-w-[950px]">
                       <thead>
                         <tr className="border-b border-white/5 bg-slate-900/40 text-slate-500 font-extrabold uppercase tracking-wider">
                           <th className="p-4">Profile</th>
+                          <th className="p-4">Tier</th>
                           <th className="p-4">Gender</th>
                           <th className="p-4">Location</th>
                           <th className="p-4">Interests</th>
                           <th className="p-4">Chat</th>
+                          <th className="p-4">Auto-Skip</th>
                           <th className="p-4">Video Asset</th>
                           <th className="p-4 text-right">Actions</th>
                         </tr>
@@ -1400,7 +1494,7 @@ export default function AdminPage() {
                       <tbody>
                         {bots.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">
+                            <td colSpan={9} className="p-8 text-center text-slate-500 font-bold">
                               No video streaming bots configured in database pool.
                             </td>
                           </tr>
@@ -1417,6 +1511,17 @@ export default function AdminPage() {
                                   <span className="font-extrabold text-white text-sm font-sans">{bot.username}</span>
                                   <span className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{bot.bio}</span>
                                 </div>
+                              </td>
+                              <td className="p-4">
+                                {bot.isPremium ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wide">
+                                    👑 Premium
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wide">
+                                    🆓 General
+                                  </span>
+                                )}
                               </td>
                               <td className="p-4 capitalize font-semibold text-slate-300">
                                 {bot.gender === 'female' ? 'Female 👩' : 'Male 👨'}
@@ -1444,14 +1549,31 @@ export default function AdminPage() {
                                   </span>
                                 )}
                               </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1">
+                                  {bot.skipAfterDuration ? (
+                                    <span className="inline-flex items-center gap-1 text-slate-300 text-[10px] font-semibold">
+                                      ⏳ Skip after {bot.skipDurationSeconds}s
+                                    </span>
+                                  ) : null}
+                                  {bot.skipNearEnd ? (
+                                    <span className="inline-flex items-center gap-1 text-slate-300 text-[10px] font-semibold">
+                                      ⏭️ Skip 5s before end
+                                    </span>
+                                  ) : null}
+                                  {!bot.skipAfterDuration && !bot.skipNearEnd ? (
+                                    <span className="text-[10px] text-slate-500 italic">No skip rules</span>
+                                  ) : null}
+                                </div>
+                              </td>
                               <td className="p-4 font-mono text-slate-400 truncate max-w-[200px]">
                                 <a
-                                  href={bot.videoUrl}
+                                  href={resolveBotVideoUrl(bot.videoUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-brand-primary hover:underline font-semibold"
                                 >
-                                  Preview Video Asset 🔗
+                                  Preview 🔗
                                 </a>
                               </td>
                               <td className="p-4 text-right">

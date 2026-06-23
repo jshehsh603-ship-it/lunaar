@@ -913,7 +913,11 @@ app.get('/api/admin/bots', (req, res) => {
 
 // Admin Add Video Bot
 app.post('/api/admin/bots', (req, res) => {
-  const { username, gender, country, bio, interests, videoUrl, chatEnabled, chatMessages } = req.body;
+  const { 
+    username, gender, country, bio, interests, videoUrl, 
+    chatEnabled, chatMessages, isPremium, 
+    skipAfterDuration, skipDurationSeconds, skipNearEnd 
+  } = req.body;
   
   if (!videoUrl) {
     res.status(400).json({ success: false, error: 'Video URL is required.' });
@@ -953,7 +957,11 @@ app.post('/api/admin/bots', (req, res) => {
     chatMessages: Array.isArray(chatMessages) ? chatMessages.map((m: any) => ({
       text: String(m.text || '').trim(),
       delay: Math.max(0, Number(m.delay || 0))
-    })).filter((m: any) => m.text !== '') : []
+    })).filter((m: any) => m.text !== '') : [],
+    isPremium: typeof isPremium === 'boolean' ? isPremium : false,
+    skipAfterDuration: typeof skipAfterDuration === 'boolean' ? skipAfterDuration : false,
+    skipDurationSeconds: Math.max(1, Number(skipDurationSeconds || 30)),
+    skipNearEnd: typeof skipNearEnd === 'boolean' ? skipNearEnd : false
   };
 
   db.addVideoBot(newBot);
@@ -967,9 +975,19 @@ app.delete('/api/admin/bots/:id', (req, res) => {
   res.json({ success });
 });
 
-// Public Endpoint to retrieve current video bot pool
+// Public Endpoint to retrieve current video bot pool based on user tier
 app.get('/api/bots', (req, res) => {
-  res.json(db.getVideoBots());
+  const { userId, isPremium } = req.query;
+  const user = userId ? db.getUser(String(userId)) : undefined;
+  const isPremiumUser = (user ? user.isPremium : false) || isPremium === 'true';
+  
+  const allBots = db.getVideoBots();
+  // Premium users get Premium bots, Free users get General bots
+  const filteredBots = allBots.filter(bot => {
+    const botIsPremium = bot.isPremium === true;
+    return isPremiumUser ? botIsPremium : !botIsPremium;
+  });
+  res.json(filteredBots);
 });
 
 // Root Health Check Endpoint

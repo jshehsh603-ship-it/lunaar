@@ -55,6 +55,11 @@ export default function ChatPage() {
   
   // UI and Match States
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const [genderFilter, setGenderFilter] = useState<'everyone' | 'male' | 'female'>('everyone');
   const [genderFilterDropdownOpen, setGenderFilterDropdownOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState<string>('World');
@@ -160,6 +165,11 @@ export default function ChatPage() {
   const loopbackIntervalRef = useRef<any>(null);
   const simTimeoutRef = useRef<any>(null);
   const simMessagesTimeoutsRef = useRef<any[]>([]);
+  const botDurationSkipTimeoutRef = useRef<any>(null);
+  const autoSkipTriggeredRef = useRef<boolean>(false);
+  const loopbackModeRef = useRef<boolean>(false);
+  const partnerProfileRef = useRef<any>(null);
+  const lastSeenBotIdRef = useRef<string | null>(null);
 
   // Refs to avoid React stale closures in timeouts
   const isMatchedRef = useRef(false);
@@ -220,7 +230,11 @@ export default function ChatPage() {
       ? (window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin)
       : 'http://localhost:3001';
       
-    fetch(`${backendUrl}/api/bots`)
+    const savedUserStr = localStorage.getItem('lunaar_user');
+    const userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
+    const userId = userObj.id || '';
+      
+    fetch(`${backendUrl}/api/bots?userId=${userId}&isPremium=${userObj.isPremium || false}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -253,6 +267,14 @@ export default function ChatPage() {
   useEffect(() => {
     isMatchingRef.current = isMatching;
   }, [isMatching]);
+
+  useEffect(() => {
+    loopbackModeRef.current = loopbackMode;
+  }, [loopbackMode]);
+
+  useEffect(() => {
+    partnerProfileRef.current = partnerProfile;
+  }, [partnerProfile]);
 
   // 1. Initialize media streams and Socket connection
   useEffect(() => {
@@ -882,6 +904,7 @@ export default function ChatPage() {
     setIsMatching(true);
     setIsMatched(false);
     setPartnerProfile(null);
+    setLoopbackMode(false);
     
     // Read filters from localStorage
     const savedUserStr = localStorage.getItem('lunaar_user');
@@ -916,6 +939,10 @@ export default function ChatPage() {
 
   // Mock Simulated Partner for zero-dependency standalone sandbox execution
   const triggerSimulatedPartner = () => {
+    if (isMatchedRef.current || !isMatchingRef.current) {
+      console.log('Skipping triggerSimulatedPartner: user is either already matched or not currently matching.');
+      return;
+    }
     if (botPool.length === 0) {
       console.log('No simulated partners/bots available in the pool yet. Retrying in 2 seconds...');
       const retryTimeout = setTimeout(() => {
@@ -929,32 +956,91 @@ export default function ChatPage() {
     console.log('No other active matches found. Launching Simulated Partner Loopback.');
     if (loopbackIntervalRef.current) clearInterval(loopbackIntervalRef.current);
 
-    const activePool = botPool;
+    // Failsafe: Filter active pool by premium status
+    const isUserPremium = currentUser?.isPremium || false;
+    const activePool = botPool.filter(bot => {
+      const botIsPremium = bot.isPremium === true;
+      return isUserPremium ? botIsPremium : !botIsPremium;
+    });
 
-    // Filter bots by user preference (genderFilter and countryFilter)
-    let filtered = activePool.filter(bot => {
+    // Read seen bots from localStorage to avoid meeting them again
+    let seenBotIds: string[] = [];
+    try {
+      const savedSeenBots = localStorage.getItem('lunaar_seen_bots');
+      if (savedSeenBots) {
+        seenBotIds = JSON.parse(savedSeenBots);
+        if (!Array.isArray(seenBotIds)) {
+          seenBotIds = [];
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing saved seen bots:', e);
+      seenBotIds = [];
+    }
+    
+    const unseenBots = activePool.filter(bot => !seenBotIds.includes(bot.id));
+    if (unseenBots.length === 0) {
+      console.log('All available bots in activePool have been seen by this user. No further bot matches.');
+      return; // Do not reset seen bots; never meet them again!
+    }
+
+    // Filter by gender preference (strictly respected)
+    const genderFiltered = unseenBots.filter(bot => {
       if (genderFilter !== 'everyone') {
         return bot.gender === genderFilter;
       }
       return true;
     });
 
+    // Then filter by country preference if set
+    let finalSelectionPool = genderFiltered;
     if (countryFilter !== 'World') {
-      const countryFiltered = filtered.filter(bot => bot.country?.toLowerCase() === countryFilter.toLowerCase());
+      const countryFiltered = genderFiltered.filter(bot => bot.country?.toLowerCase() === countryFilter.toLowerCase());
       if (countryFiltered.length > 0) {
-        filtered = countryFiltered;
+        finalSelectionPool = countryFiltered;
       }
     }
 
-    // Pick random bot from filtered, or fallback to activePool if none matched filters
-    const randomPartner = filtered[Math.floor(Math.random() * filtered.length)] || activePool[Math.floor(Math.random() * activePool.length)];
+    if (finalSelectionPool.length === 0) {
+      console.log('No unseen bots matching the user preferences are left. No bot match triggered.');
+      return; // Do not fall back to other genders or seen bots!
+    }
+
+    // Pick random bot from the selection pool
+    const randomPartner = finalSelectionPool[Math.floor(Math.random() * finalSelectionPool.length)];
+
+    if (randomPartner) {
+      lastSeenBotIdRef.current = randomPartner.id;
+      seenBotIds.push(randomPartner.id);
+      localStorage.setItem('lunaar_seen_bots', JSON.stringify(seenBotIds));
+    }
 
     audioSynth.playMatch();
     setPartnerProfile(randomPartner);
     setIsMatching(false);
     setIsMatched(true);
+    isMatchingRef.current = false;
+    isMatchedRef.current = true;
     setLoopbackMode(true);
     setMessages([]);
+
+    // Reset auto-skip trigger ref
+    autoSkipTriggeredRef.current = false;
+
+    // Schedule duration-based skip if enabled
+    if (randomPartner.skipAfterDuration && randomPartner.skipDurationSeconds) {
+      const seconds = Number(randomPartner.skipDurationSeconds) || 30;
+      if (botDurationSkipTimeoutRef.current) {
+        clearTimeout(botDurationSkipTimeoutRef.current);
+      }
+      botDurationSkipTimeoutRef.current = setTimeout(() => {
+        if (isMatchedRef.current && loopbackModeRef.current && !autoSkipTriggeredRef.current) {
+          console.log(`Auto-skipping bot after duration of ${seconds} seconds.`);
+          autoSkipTriggeredRef.current = true;
+          handleSkipNext();
+        }
+      }, seconds * 1000);
+    }
 
     // Bind videoUrl stream to remote video display
     setTimeout(() => {
@@ -1114,6 +1200,11 @@ export default function ChatPage() {
       simMessagesTimeoutsRef.current.forEach(t => clearTimeout(t));
       simMessagesTimeoutsRef.current = [];
     }
+    if (botDurationSkipTimeoutRef.current) {
+      clearTimeout(botDurationSkipTimeoutRef.current);
+      botDurationSkipTimeoutRef.current = null;
+    }
+    autoSkipTriggeredRef.current = false;
   };
 
   // 2. Control toggles
@@ -1369,9 +1460,27 @@ export default function ChatPage() {
     }
   };
 
+  const handleRemoteVideoTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (!video || !isMatchedRef.current || !loopbackModeRef.current || autoSkipTriggeredRef.current) return;
+    
+    const bot = partnerProfileRef.current;
+    if (bot && bot.skipNearEnd) {
+      const duration = video.duration;
+      const currentTime = video.currentTime;
+      if (duration && duration > 5 && (duration - currentTime <= 5)) {
+        console.log(`Auto-skipping bot because video is near end (duration: ${duration}, current: ${currentTime}).`);
+        autoSkipTriggeredRef.current = true;
+        handleSkipNext();
+      }
+    }
+  };
+
   // 3. User actions
   const handleSkipNext = () => {
     audioSynth.playSkip();
+    closePeerConnection(); // Stop current peer connection and bot streams immediately!
+
     if (socketRef.current) {
       // Read filters from localStorage
       const savedUserStr = localStorage.getItem('lunaar_user');
@@ -1385,7 +1494,9 @@ export default function ChatPage() {
       };
 
       if (loopbackMode) {
-        closePeerConnection();
+        if (partnerProfile) {
+          lastSeenBotIdRef.current = partnerProfile.id;
+        }
         setIsMatched(false);
         setPartnerProfile(null);
         setLocalFilter('none');
@@ -1728,7 +1839,7 @@ export default function ChatPage() {
                   alt={genderFilter}
                   className="w-3.5 h-3.5 object-contain"
                 />
-                <span className="truncate">{genderFilter === 'everyone' ? 'All' : genderFilter === 'female' ? 'Girls' : 'Boys'}</span>
+                <span className="truncate">{genderFilter === 'everyone' ? 'Others' : genderFilter === 'female' ? 'Female' : 'Male'}</span>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
                   <ChevronDown className="w-3 h-3" />
                 </div>
@@ -1748,9 +1859,9 @@ export default function ChatPage() {
                       className="absolute right-0 top-full mt-1.5 w-32 rounded-xl bg-slate-950/95 border border-white/10 p-1 backdrop-blur-md z-50 flex flex-col gap-0.5 shadow-2xl"
                     >
                       {([
-                        { value: 'everyone', label: 'Genders: All', img: '/other.png' },
-                        { value: 'female', label: 'Girls (VIP)', img: '/female.png' },
-                        { value: 'male', label: 'Boys (VIP)', img: '/male.png' }
+                        { value: 'everyone', label: 'Others', img: '/other.png' },
+                        { value: 'female', label: 'Female', img: '/female.png' },
+                        { value: 'male', label: 'Male', img: '/male.png' }
                       ] as const).map((opt) => (
                         <button
                           key={opt.value}
@@ -1793,20 +1904,71 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {currentUser?.isPremium ? (
-            <div className="hidden md:flex px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border border-amber-500/30 text-amber-300 items-center gap-2 shadow-[0_0_12px_rgba(245,158,11,0.15)] select-none">
-              <Award className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
-              <span>VIP Active</span>
-            </div>
+          {mounted && isDev ? (
+            currentUser?.isPremium ? (
+              <button
+                onClick={() => {
+                  audioSynth.playClick();
+                  if (typeof window !== 'undefined') {
+                    const savedUserStr = localStorage.getItem('lunaar_user');
+                    if (savedUserStr) {
+                      const userObj = JSON.parse(savedUserStr);
+                      userObj.isPremium = false;
+                      localStorage.setItem('lunaar_user', JSON.stringify(userObj));
+                      setCurrentUser(userObj);
+                      
+                      const backendUrl = window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+                      fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
+                    }
+                  }
+                }}
+                className="hidden md:flex px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border border-amber-500/30 text-amber-300 items-center gap-2 shadow-[0_0_12px_rgba(245,158,11,0.15)] hover:opacity-90 transition duration-300"
+                title="Click to toggle VIP status"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+                <span>👑 VIP Active (Click to toggle)</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  audioSynth.playMatch();
+                  if (typeof window !== 'undefined') {
+                    const savedUserStr = localStorage.getItem('lunaar_user');
+                    if (savedUserStr) {
+                      const userObj = JSON.parse(savedUserStr);
+                      userObj.isPremium = true;
+                      localStorage.setItem('lunaar_user', JSON.stringify(userObj));
+                      setCurrentUser(userObj);
+                      
+                      const backendUrl = window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+                      fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
+                    }
+                  }
+                  confetti({ particleCount: 50, spread: 40 });
+                }}
+                className="hidden md:flex px-5 py-2.5 rounded-xl text-sm font-bold premium-vip-button items-center gap-2 hover:bg-slate-900 transition duration-300"
+                title="Click to toggle VIP status"
+              >
+                <Star className="w-4 h-4 text-white fill-white animate-pulse" />
+                <span>Upgrade to VIP (Click to Activate)</span>
+              </button>
+            )
           ) : (
-            <a 
-              href="/upgrade"
-              onClick={() => audioSynth.playClick()}
-              className="hidden md:flex px-5 py-2.5 rounded-xl text-sm font-bold premium-vip-button items-center gap-2"
-            >
-              <Star className="w-4 h-4 text-white fill-white animate-pulse" />
-              <span>Upgrade to VIP</span>
-            </a>
+            currentUser?.isPremium ? (
+              <div className="hidden md:flex px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border border-amber-500/30 text-amber-300 items-center gap-2 shadow-[0_0_12px_rgba(245,158,11,0.15)] select-none">
+                <Award className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+                <span>VIP Active</span>
+              </div>
+            ) : (
+              <a 
+                href="/upgrade"
+                onClick={() => audioSynth.playClick()}
+                className="hidden md:flex px-5 py-2.5 rounded-xl text-sm font-bold premium-vip-button items-center gap-2"
+              >
+                <Star className="w-4 h-4 text-white fill-white animate-pulse" />
+                <span>Upgrade to VIP</span>
+              </a>
+            )
           )}
         </div>
       </header>
@@ -1841,6 +2003,7 @@ export default function ChatPage() {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                onTimeUpdate={handleRemoteVideoTimeUpdate}
                 className={`w-full h-full object-cover lg:object-contain transition-all duration-500 ${
                   isMatched ? 'opacity-100' : 'opacity-0'
                 } ${remoteFilter === 'blur' && !remoteFace ? 'filter blur-2xl scale-105' : ''}`}
@@ -1986,7 +2149,7 @@ export default function ChatPage() {
               <>
                 {/* Desktop Inline Panel */}
                 {!isMobile ? (
-                  <div className="absolute inset-0 bg-slate-950/70 z-30 flex items-center justify-center p-6 backdrop-blur-xs">
+                  <div className="absolute inset-0 bg-slate-950/70 z-30 flex items-center justify-center p-6">
                     <div className="w-full max-w-sm glass-panel rounded-2xl p-6 flex flex-col gap-4 text-left border border-white/10 shadow-2xl">
                       <div className="flex flex-col gap-1 text-center">
                         <h3 className="font-extrabold text-sm text-white uppercase tracking-widest">
@@ -2588,15 +2751,21 @@ export default function ChatPage() {
                 >
                   <button
                     onClick={handleStartClick}
-                    className={`flex-1 px-4 lg:px-8 h-[52px] lg:h-[68px] rounded-xl lg:rounded-2xl flex items-center justify-center gap-2.5 transition duration-300 active:scale-95 relative overflow-hidden group ${
-                      isMobile 
-                        ? 'bg-gradient-to-r from-emerald-500/30 to-teal-600/30 border border-emerald-500/50 text-white font-extrabold text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)] backdrop-blur-md hover:from-emerald-500/40 hover:to-teal-600/40' 
-                        : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-none text-white font-extrabold text-sm lg:text-base hover:shadow-[0_0_25px_rgba(16,185,129,0.35)]'
+                    className={`flex-1 px-4 lg:px-8 h-[52px] lg:h-[68px] rounded-xl lg:rounded-2xl flex items-center justify-center gap-2.5 transition duration-300 relative overflow-hidden group ${
+                      isMatching
+                        ? (isMobile 
+                            ? 'bg-gradient-to-r from-emerald-600/40 to-teal-700/40 border border-emerald-600/60 text-emerald-250 font-extrabold text-sm shadow-[inset_0_4px_8px_rgba(0,0,0,0.45)] backdrop-blur-md scale-[0.98] translate-y-[1px]' 
+                            : 'bg-gradient-to-r from-emerald-650 to-teal-750 border-none text-emerald-100 font-extrabold text-sm lg:text-base shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)] scale-[0.98] translate-y-[2.5px] opacity-90')
+                        : (isMobile 
+                            ? 'bg-gradient-to-r from-emerald-500/30 to-teal-600/30 border border-emerald-500/50 text-white font-extrabold text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)] backdrop-blur-md hover:from-emerald-500/40 hover:to-teal-600/40' 
+                            : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-none text-white font-extrabold text-sm lg:text-base hover:shadow-[0_0_25px_rgba(16,185,129,0.35)]')
                     }`}
                     title="Start Match / Next Person"
                   >
                     <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] transition-transform"></span>
-                    <Play className="w-4 h-4 lg:w-5 lg:h-5 fill-white text-white group-hover:rotate-12 transition duration-300" />
+                    <Play className={`w-4 h-4 lg:w-5 lg:h-5 fill-white text-white group-hover:rotate-12 transition duration-300 ${
+                      isMatching ? 'opacity-85 scale-95' : ''
+                    }`} />
                     <span>{isMatching || isMatched ? 'Next' : 'Start'}</span>
                   </button>
 
@@ -2809,7 +2978,7 @@ export default function ChatPage() {
                     alt={genderFilter}
                     className="w-3.5 h-3.5 object-contain"
                   />
-                  <span>{genderFilter === 'everyone' ? 'Genders: All' : genderFilter === 'female' ? 'Girls (VIP)' : 'Boys (VIP)'}</span>
+                  <span>{genderFilter === 'everyone' ? 'Others' : genderFilter === 'female' ? 'Female (VIP)' : 'Male (VIP)'}</span>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
                     <ChevronDown className="w-3 h-3" />
                   </div>
@@ -2830,9 +2999,9 @@ export default function ChatPage() {
                         className="absolute left-0 top-full mt-1.5 w-32 rounded-xl bg-slate-950/95 border border-white/10 p-1 backdrop-blur-md z-50 flex flex-col gap-0.5 shadow-2xl"
                       >
                         {([
-                          { value: 'everyone', label: 'Genders: All', img: '/other.png' },
-                          { value: 'female', label: 'Girls (VIP)', img: '/female.png' },
-                          { value: 'male', label: 'Boys (VIP)', img: '/male.png' }
+                          { value: 'everyone', label: 'Others', img: '/other.png' },
+                          { value: 'female', label: 'Female (VIP)', img: '/female.png' },
+                          { value: 'male', label: 'Male (VIP)', img: '/male.png' }
                         ] as const).map((opt) => (
                           <button
                             key={opt.value}
@@ -3159,7 +3328,7 @@ export default function ChatPage() {
                   <div className="flex items-start gap-2.5 text-xs text-slate-300">
                     <Check className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-white">Gender Filters:</span> Match exclusively with girls or boys.
+                      <span className="font-bold text-white">Gender Filters:</span> Match exclusively with females or males.
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs text-slate-300">
