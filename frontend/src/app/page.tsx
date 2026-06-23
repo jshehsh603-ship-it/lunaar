@@ -398,7 +398,8 @@ export default function LandingPage() {
       let userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
       
       // Update with matching filters
-      userObj.genderPreference = gender;
+      userObj.gender = gender;
+      userObj.genderPreference = 'everyone';
       userObj.countryPreference = country;
       userObj.interests = interests;
       

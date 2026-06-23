@@ -30,6 +30,15 @@ class Matchmaker {
     // If they were already in a match, disconnect them first
     this.endActiveMatch(socket.id);
 
+    // Fetch profile to verify premium status
+    const profile = db.getUser(userId);
+    const isPremium = profile ? profile.isPremium : false;
+
+    // Securely override gender filter to 'everyone' on the backend for non-VIPs
+    if (!isPremium) {
+      filters.gender = 'everyone';
+    }
+
     const userEntry: QueueUser = {
       socket,
       userId,

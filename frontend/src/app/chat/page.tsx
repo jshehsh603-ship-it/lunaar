@@ -286,7 +286,8 @@ export default function ChatPage() {
       .catch(() => {});
     
     // Set initial filters on mount based on user profile and VIP status
-    setGenderFilter(userObj.genderPreference || 'everyone');
+    const initialGenderFilter = userObj.isPremium ? (userObj.genderPreference || 'everyone') : 'everyone';
+    setGenderFilter(initialGenderFilter);
     setCountryFilter(userObj.countryPreference || userObj.country || 'World');
 
     // Initialize media stream
@@ -885,12 +886,13 @@ export default function ChatPage() {
     // Read filters from localStorage
     const savedUserStr = localStorage.getItem('lunaar_user');
     const userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
+    const isPremium = userObj.isPremium || false;
     
     const filters = {
-      gender: userObj.genderPreference || 'everyone',
+      gender: isPremium ? (userObj.genderPreference || 'everyone') : 'everyone',
       country: userObj.countryPreference || 'World',
       interests: userObj.interests || [],
-      isPremium: userObj.isPremium || false
+      isPremium: isPremium
     };
 
     socketRef.current.emit('start_matching', { filters });
@@ -1228,12 +1230,13 @@ export default function ChatPage() {
     
     const savedUserStr = localStorage.getItem('lunaar_user');
     const userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
+    const isPremium = userObj.isPremium || false;
     
     const filters = {
-      gender: g,
+      gender: isPremium ? g : 'everyone',
       country: c,
       interests: userObj.interests || [],
-      isPremium: userObj.isPremium || false
+      isPremium: isPremium
     };
     
     setIsMatching(true);
