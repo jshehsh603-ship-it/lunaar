@@ -284,7 +284,9 @@ app.post('/api/register', async (req, res) => {
     avatarUrl: `https://api.dicebear.com/7.x/lorelei/svg?seed=${username}`
   });
 
-  await sendActivationEmail(email, token, username);
+  sendActivationEmail(email, token, username).catch(err => {
+    console.error('[Email] Error sending activation email asynchronously:', err);
+  });
 
   res.json({ success: true, email });
 });
@@ -326,7 +328,9 @@ app.post('/api/resend-activation', async (req, res) => {
     activationToken: token
   });
 
-  await sendActivationEmail(targetEmail, token, user.username);
+  sendActivationEmail(targetEmail, token, user.username).catch(err => {
+    console.error('[Email] Error sending activation email asynchronously:', err);
+  });
 
   res.json({ success: true, email: targetEmail });
 });
