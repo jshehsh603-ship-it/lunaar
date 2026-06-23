@@ -274,21 +274,36 @@ app.post('/api/register', async (req, res) => {
   const userId = `u_${Math.random().toString(36).substring(2, 11)}`;
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  db.createOrUpdateUser({
+  const autoActivate = !process.env.SMTP_USER; // Auto-activate if no real SMTP server is configured
+
+  const userProfile = db.createOrUpdateUser({
     id: userId,
     username,
     email,
     password,
-    activated: false,
+    activated: autoActivate,
     activationToken: token,
     avatarUrl: `https://api.dicebear.com/7.x/lorelei/svg?seed=${username}`
   });
 
-  sendActivationEmail(email, token, username).catch(err => {
-    console.error('[Email] Error sending activation email asynchronously:', err);
-  });
+  if (!autoActivate) {
+    sendActivationEmail(email, token, username).catch(err => {
+      console.error('[Email] Error sending activation email asynchronously:', err);
+    });
+  }
 
-  res.json({ success: true, email });
+  res.json({ 
+    success: true, 
+    email,
+    activated: autoActivate,
+    user: {
+      id: userProfile.id,
+      username: userProfile.username,
+      email: userProfile.email,
+      avatarUrl: userProfile.avatarUrl,
+      isPremium: userProfile.isPremium
+    }
+  });
 });
 
 // Resend activation endpoint

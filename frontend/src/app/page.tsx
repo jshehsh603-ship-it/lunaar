@@ -103,12 +103,36 @@ export default function LandingPage() {
         const data = await response.json();
         
         if (response.ok) {
-          setActivationEmail(emailInput);
-          setNewActivationEmail('');
-          setResendMessage('');
-          setResendError('');
-          setShowAuthModal(false);
-          setShowActivationModal(true);
+          if (data.activated && data.user) {
+            // Auto-login since SMTP is bypassed in this env
+            setIsLoggedIn(true);
+            setUserEmail(data.user.email);
+            setUsername(data.user.username);
+            setAvatar(data.user.avatarUrl);
+            setIsPremium(data.user.isPremium || false);
+
+            if (typeof window !== 'undefined') {
+              const savedUserStr = localStorage.getItem('lunaar_user');
+              const savedUserObj = savedUserStr ? JSON.parse(savedUserStr) : {};
+              const newUserObj = {
+                ...savedUserObj,
+                id: data.user.id,
+                username: data.user.username,
+                avatarUrl: data.user.avatarUrl,
+                email: data.user.email,
+                isPremium: data.user.isPremium || false
+              };
+              localStorage.setItem('lunaar_user', JSON.stringify(newUserObj));
+            }
+            setShowAuthModal(false);
+          } else {
+            setActivationEmail(emailInput);
+            setNewActivationEmail('');
+            setResendMessage('');
+            setResendError('');
+            setShowAuthModal(false);
+            setShowActivationModal(true);
+          }
         } else {
           setAuthError(data.error || 'Registration failed.');
         }
