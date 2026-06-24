@@ -424,6 +424,48 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', uptime: process.uptime() });
 });
 
+// Diagnostic Test Email Endpoint
+app.get('/api/test-email', async (req, res) => {
+  const { to } = req.query;
+  if (!to) {
+    res.status(400).json({ error: 'Please provide a target email in the "to" query parameter.' });
+    return;
+  }
+
+  try {
+    const activeTransporter = await getTransporter();
+    if (!activeTransporter) {
+      res.status(500).json({ error: 'Could not initialize transporter. Check if SMTP configuration is correct.' });
+      return;
+    }
+
+    const fromEmail = process.env.SMTP_FROM || 'noreply@lunaar.com';
+    const info = await activeTransporter.sendMail({
+      from: `"Lunaar Test" <${fromEmail}>`,
+      to: String(to),
+      subject: "Lunaar SMTP Test Connection",
+      text: "If you receive this, your backend SMTP configuration is 100% correct!",
+      html: "<h3>Connection Successful!</h3><p>Your backend SMTP configuration on Render is working perfectly.</p>"
+    });
+
+    res.json({
+      success: true,
+      message: 'SMTP connection and email sending succeeded!',
+      messageId: info.messageId,
+      previewUrl: (activeTransporter as any).isTestAccount ? nodemailer.getTestMessageUrl(info) : null
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      command: err.command,
+      stack: err.stack
+    });
+  }
+});
+
+
 // Platform Stats Endpoint
 app.get('/api/stats', (req, res) => {
   res.json({
