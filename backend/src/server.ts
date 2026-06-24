@@ -156,6 +156,48 @@ async function getTransporter() {
   return transporter;
 }
 
+async function sendEmailViaResend(to: string, subject: string, text: string, html: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const fromEmail = process.env.SMTP_FROM || 'onboarding@resend.dev';
+    console.log(`[Resend] Sending email to ${to} via HTTP API...`);
+    
+    let fromHeader = `"Lunaar" <${fromEmail}>`;
+    if (fromEmail === 'onboarding@resend.dev') {
+      fromHeader = 'onboarding@resend.dev';
+    }
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: fromHeader,
+        to: [to],
+        subject,
+        text,
+        html
+      })
+    });
+
+    const data = await response.json() as any;
+    if (response.ok) {
+      console.log(`[Resend] Email sent successfully! ID: ${data.id}`);
+      return true;
+    } else {
+      console.error(`[Resend] API returned an error:`, data);
+      return false;
+    }
+  } catch (err) {
+    console.error(`[Resend] Failed to connect to Resend API:`, err);
+    return false;
+  }
+}
+
 async function sendActivationEmail(email: string, token: string, username: string) {
   const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
   
@@ -164,6 +206,34 @@ async function sendActivationEmail(email: string, token: string, username: strin
   console.log(`🔗 LINK: ${activationLink}`);
   console.log(`==================================================\n`);
 
+  const subject = "Activate your Lunaar account";
+  const text = `Thank you for joining Lunaar. Please login now to activate your account: ${activationLink}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <!-- Logo Section -->
+      <div style="margin-bottom: 28px;">
+        <h1 style="color: #FF3B3B; font-size: 32px; font-weight: 900; letter-spacing: 4px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">LUNAAR</h1>
+        <a href="http://localhost:3000" style="color: #4A5568; text-decoration: none; font-size: 13px; font-weight: 500; font-family: monospace;">lunaar.com</a>
+      </div>
+
+      <!-- Content -->
+      <div style="font-size: 16px; line-height: 1.6; color: #2D3748; margin-bottom: 32px; font-family: Arial, sans-serif;">
+        <p style="margin: 0 0 12px 0;">Thank you for joining <a href="http://localhost:3000" style="color: #E53E3E; text-decoration: underline; font-weight: bold;">Lunaar</a>.</p>
+        <p style="margin: 0;">Please <span style="font-weight: bold;">login now</span> to activate your account and get access to cool video chat features available to only members.</p>
+      </div>
+
+      <!-- Button -->
+      <div style="margin-bottom: 32px;">
+        <a href="${activationLink}" style="display: inline-block; background-color: #E53E3E; color: #ffffff; padding: 16px 48px; font-size: 15px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">LOGIN NOW</a>
+      </div>
+    </div>
+  `;
+
+  if (process.env.RESEND_API_KEY) {
+    const success = await sendEmailViaResend(email, subject, text, html);
+    if (success) return;
+  }
+
   const activeTransporter = await getTransporter();
   if (activeTransporter) {
     try {
@@ -171,28 +241,9 @@ async function sendActivationEmail(email: string, token: string, username: strin
       const info = await activeTransporter.sendMail({
         from: `"Lunaar" <${fromEmail}>`,
         to: email,
-        subject: "Activate your Lunaar account",
-        text: `Thank you for joining Lunaar. Please login now to activate your account: ${activationLink}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <!-- Logo Section -->
-            <div style="margin-bottom: 28px;">
-              <h1 style="color: #FF3B3B; font-size: 32px; font-weight: 900; letter-spacing: 4px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">LUNAAR</h1>
-              <a href="http://localhost:3000" style="color: #4A5568; text-decoration: none; font-size: 13px; font-weight: 500; font-family: monospace;">lunaar.com</a>
-            </div>
-
-            <!-- Content -->
-            <div style="font-size: 16px; line-height: 1.6; color: #2D3748; margin-bottom: 32px; font-family: Arial, sans-serif;">
-              <p style="margin: 0 0 12px 0;">Thank you for joining <a href="http://localhost:3000" style="color: #E53E3E; text-decoration: underline; font-weight: bold;">Lunaar</a>.</p>
-              <p style="margin: 0;">Please <span style="font-weight: bold;">login now</span> to activate your account and get access to cool video chat features available to only members.</p>
-            </div>
-
-            <!-- Button -->
-            <div style="margin-bottom: 32px;">
-              <a href="${activationLink}" style="display: inline-block; background-color: #E53E3E; color: #ffffff; padding: 16px 48px; font-size: 15px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">LOGIN NOW</a>
-            </div>
-          </div>
-        `,
+        subject,
+        text,
+        html
       });
 
       console.log(`[nodemailer] Email sent! Message ID: ${info.messageId}`);
@@ -208,48 +259,57 @@ async function sendActivationEmail(email: string, token: string, username: strin
 
 async function sendWelcomeEmail(email: string, username: string) {
   const activeTransporter = await getTransporter();
+  const upgradeLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile?upgrade=true`;
+  
+  console.log(`\n==================================================`);
+  console.log(`📧 SENDING WELCOME EMAIL TO: ${email}`);
+  console.log(`==================================================\n`);
+
+  const subject = "Registration Confirmed, Welcome to Lunaar!";
+  const text = `Thank you for joining Lunaar, your free registration has been confirmed! Upgrade to VIP to unlock all features.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px 20px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <!-- Logo Section -->
+      <div style="margin-bottom: 24px; display: inline-block;">
+        <span style="font-size: 28px; font-weight: 800; letter-spacing: 4px; font-family: 'Arial Black', Gadget, sans-serif; color: #000000; text-transform: uppercase;">LUN<span style="color: #e52424;">AAR</span></span><span style="font-size: 14px; font-weight: bold; color: #718096; vertical-align: top; margin-left: 2px;">.com</span>
+      </div>
+
+      <!-- Header -->
+      <h1 style="font-size: 26px; font-weight: 800; color: #1e293b; margin: 0 0 24px 0; font-family: Arial, sans-serif; letter-spacing: -0.5px; line-height: 1.2;">Registration Confirmed, Welcome to Lunaar!</h1>
+
+      <!-- Content -->
+      <div style="font-size: 15px; line-height: 1.6; color: #4A5568; margin-bottom: 28px; font-family: Arial, sans-serif; text-align: center; padding: 0 10px;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: bold; color: #1e293b; line-height: 1.4;">Thank you for joining Lunaar, your free registration has been confirmed.</h3>
+        <p style="margin: 0; font-size: 14px; color: #4a5568; line-height: 1.6; max-width: 520px; margin-left: auto; margin-right: auto;">Meeting new people just got easier! Your free membership includes cool features such as face filters, auto translate and more. To unlock all available features including gender filter, private chat and safe search options upgrade to Lunaar VIP.</p>
+      </div>
+
+      <!-- Button & Subtext -->
+      <div style="margin-bottom: 24px;">
+        <div style="margin-bottom: 12px;">
+          <a href="${upgradeLink}" style="display: inline-block; background-color: #e52424; color: #ffffff; padding: 14px 44px; font-size: 16px; font-weight: bold; text-decoration: none; border-radius: 4px; text-transform: uppercase; font-family: Arial, sans-serif; letter-spacing: 0.5px;">UNLOCK ALL FEATURES</a>
+        </div>
+        <p style="margin: 0; font-size: 12px; color: #1a1a1a; font-weight: bold; font-family: Arial, sans-serif; letter-spacing: 0.5px;">Limited Time Only</p>
+      </div>
+
+      <!-- Dark Footer Bar -->
+      <div style="background-color: #0c0813; height: 12px; width: 100%; margin-top: 36px; border-radius: 2px;"></div>
+    </div>
+  `;
+
+  if (process.env.RESEND_API_KEY) {
+    const success = await sendEmailViaResend(email, subject, text, html);
+    if (success) return;
+  }
+
   if (activeTransporter) {
     try {
       const fromEmail = process.env.SMTP_FROM || 'noreply@lunaar.com';
-      const upgradeLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile?upgrade=true`;
-      
-      console.log(`\n==================================================`);
-      console.log(`📧 SENDING WELCOME EMAIL TO: ${email}`);
-      console.log(`==================================================\n`);
-
       const info = await activeTransporter.sendMail({
         from: `"Lunaar" <${fromEmail}>`,
         to: email,
-        subject: "Registration Confirmed, Welcome to Lunaar!",
-        text: `Thank you for joining Lunaar, your free registration has been confirmed! Upgrade to VIP to unlock all features.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px 20px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <!-- Logo Section -->
-            <div style="margin-bottom: 24px; display: inline-block;">
-              <span style="font-size: 28px; font-weight: 800; letter-spacing: 4px; font-family: 'Arial Black', Gadget, sans-serif; color: #000000; text-transform: uppercase;">LUN<span style="color: #e52424;">AAR</span></span><span style="font-size: 14px; font-weight: bold; color: #718096; vertical-align: top; margin-left: 2px;">.com</span>
-            </div>
-
-            <!-- Header -->
-            <h1 style="font-size: 26px; font-weight: 800; color: #1e293b; margin: 0 0 24px 0; font-family: Arial, sans-serif; letter-spacing: -0.5px; line-height: 1.2;">Registration Confirmed, Welcome to Lunaar!</h1>
-
-            <!-- Content -->
-            <div style="font-size: 15px; line-height: 1.6; color: #4A5568; margin-bottom: 28px; font-family: Arial, sans-serif; text-align: center; padding: 0 10px;">
-              <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: bold; color: #1e293b; line-height: 1.4;">Thank you for joining Lunaar, your free registration has been confirmed.</h3>
-              <p style="margin: 0; font-size: 14px; color: #4a5568; line-height: 1.6; max-width: 520px; margin-left: auto; margin-right: auto;">Meeting new people just got easier! Your free membership includes cool features such as face filters, auto translate and more. To unlock all available features including gender filter, private chat and safe search options upgrade to Lunaar VIP.</p>
-            </div>
-
-            <!-- Button & Subtext -->
-            <div style="margin-bottom: 24px;">
-              <div style="margin-bottom: 12px;">
-                <a href="${upgradeLink}" style="display: inline-block; background-color: #e52424; color: #ffffff; padding: 14px 44px; font-size: 16px; font-weight: bold; text-decoration: none; border-radius: 4px; text-transform: uppercase; font-family: Arial, sans-serif; letter-spacing: 0.5px;">UNLOCK ALL FEATURES</a>
-              </div>
-              <p style="margin: 0; font-size: 12px; color: #1a1a1a; font-weight: bold; font-family: Arial, sans-serif; letter-spacing: 0.5px;">Limited Time Only</p>
-            </div>
-
-            <!-- Dark Footer Bar -->
-            <div style="background-color: #0c0813; height: 12px; width: 100%; margin-top: 36px; border-radius: 2px;"></div>
-          </div>
-        `,
+        subject,
+        text,
+        html
       });
 
       console.log(`[nodemailer] Welcome email sent! Message ID: ${info.messageId}`);
@@ -280,7 +340,7 @@ app.post('/api/register', async (req, res) => {
   const userId = `u_${Math.random().toString(36).substring(2, 11)}`;
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  const autoActivate = !process.env.SMTP_USER; // Auto-activate if no real SMTP server is configured
+  const autoActivate = !process.env.SMTP_USER && !process.env.RESEND_API_KEY; // Auto-activate if no real SMTP/Resend server is configured
 
   const userProfile = db.createOrUpdateUser({
     id: userId,
@@ -438,6 +498,42 @@ app.get('/api/test-email', async (req, res) => {
     return;
   }
 
+  const subject = "Lunaar Email Test Connection";
+  const text = "If you receive this, your backend email configuration is 100% correct!";
+  const html = "<h3>Connection Successful!</h3><p>Your backend email configuration on Render is working perfectly.</p>";
+
+  // Try Resend first if API Key is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      console.log('[Diagnostic] Testing Resend Email API...');
+      const success = await sendEmailViaResend(String(to), subject, text, html);
+      if (success) {
+        res.json({
+          success: true,
+          provider: 'Resend API',
+          message: 'Resend email sending succeeded!'
+        });
+        return;
+      } else {
+        res.status(500).json({
+          success: false,
+          provider: 'Resend API',
+          error: 'Resend email sending failed. Check backend logs for API details.'
+        });
+        return;
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        provider: 'Resend API',
+        error: err.message,
+        stack: err.stack
+      });
+      return;
+    }
+  }
+
+  // Fallback to standard SMTP
   try {
     const activeTransporter = await getTransporter();
     if (!activeTransporter) {
@@ -449,13 +545,14 @@ app.get('/api/test-email', async (req, res) => {
     const info = await activeTransporter.sendMail({
       from: `"Lunaar Test" <${fromEmail}>`,
       to: String(to),
-      subject: "Lunaar SMTP Test Connection",
-      text: "If you receive this, your backend SMTP configuration is 100% correct!",
-      html: "<h3>Connection Successful!</h3><p>Your backend SMTP configuration on Render is working perfectly.</p>"
+      subject,
+      text,
+      html
     });
 
     res.json({
       success: true,
+      provider: 'Nodemailer SMTP',
       message: 'SMTP connection and email sending succeeded!',
       messageId: info.messageId,
       previewUrl: (activeTransporter as any).isTestAccount ? nodemailer.getTestMessageUrl(info) : null
@@ -463,6 +560,7 @@ app.get('/api/test-email', async (req, res) => {
   } catch (err: any) {
     res.status(500).json({
       success: false,
+      provider: 'Nodemailer SMTP',
       error: err.message,
       code: err.code,
       command: err.command,
