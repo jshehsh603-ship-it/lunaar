@@ -198,7 +198,7 @@ async function sendEmailViaResend(to: string, subject: string, text: string, htm
   }
 }
 
-async function sendEmailViaBrevo(to: string, subject: string, text: string, html: string): Promise<boolean> {
+async function sendEmailViaBrevo(to: string, subject: string, text: string, html: string, throwOnError = false): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return false;
 
@@ -236,10 +236,16 @@ async function sendEmailViaBrevo(to: string, subject: string, text: string, html
       return true;
     } else {
       console.error(`[Brevo] API returned an error:`, data);
+      if (throwOnError) {
+        throw new Error(`Brevo API error: ${JSON.stringify(data)}`);
+      }
       return false;
     }
   } catch (err) {
     console.error(`[Brevo] Failed to connect to Brevo API:`, err);
+    if (throwOnError) {
+      throw err;
+    }
     return false;
   }
 }
@@ -726,7 +732,7 @@ app.get('/api/test-email', async (req, res) => {
   if (process.env.BREVO_API_KEY) {
     try {
       console.log('[Diagnostic] Testing Brevo Email API...');
-      const success = await sendEmailViaBrevo(String(to), subject, text, html);
+      const success = await sendEmailViaBrevo(String(to), subject, text, html, true);
       if (success) {
         res.json({
           success: true,
