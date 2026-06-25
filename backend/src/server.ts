@@ -198,6 +198,57 @@ async function sendEmailViaResend(to: string, subject: string, text: string, htm
   }
 }
 
+async function sendEmailViaMailjet(to: string, subject: string, text: string, html: string): Promise<boolean> {
+  const apiKey = process.env.MAILJET_API_KEY;
+  const secretKey = process.env.MAILJET_SECRET_KEY;
+  if (!apiKey || !secretKey) return false;
+
+  try {
+    const fromEmail = process.env.SMTP_FROM || 'jshehsh603@gmail.com';
+    console.log(`[Mailjet] Sending email to ${to} via HTTP API...`);
+
+    const auth = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
+    const response = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        Messages: [
+          {
+            From: {
+              Email: fromEmail,
+              Name: "Lunaar"
+            },
+            To: [
+              {
+                Email: to,
+                Name: to.split('@')[0]
+              }
+            ],
+            Subject: subject,
+            TextPart: text,
+            HTMLPart: html
+          }
+        ]
+      })
+    });
+
+    const data = await response.json() as any;
+    if (response.ok) {
+      console.log(`[Mailjet] Email sent successfully!`);
+      return true;
+    } else {
+      console.error(`[Mailjet] API returned an error:`, data);
+      return false;
+    }
+  } catch (err) {
+    console.error(`[Mailjet] Failed to connect to Mailjet API:`, err);
+    return false;
+  }
+}
+
 async function sendActivationEmail(email: string, token: string, username: string) {
   const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
   
@@ -231,6 +282,11 @@ async function sendActivationEmail(email: string, token: string, username: strin
 
   if (process.env.RESEND_API_KEY) {
     const success = await sendEmailViaResend(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
+    const success = await sendEmailViaMailjet(email, subject, text, html);
     if (success) return;
   }
 
@@ -300,6 +356,11 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
     if (success) return;
   }
 
+  if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
+    const success = await sendEmailViaMailjet(adminEmail, subject, text, html);
+    if (success) return;
+  }
+
   const activeTransporter = await getTransporter();
   if (activeTransporter) {
     try {
@@ -359,6 +420,11 @@ async function sendWelcomeEmail(email: string, username: string) {
 
   if (process.env.RESEND_API_KEY) {
     const success = await sendEmailViaResend(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
+    const success = await sendEmailViaMailjet(email, subject, text, html);
     if (success) return;
   }
 
@@ -593,6 +659,37 @@ app.get('/api/test-email', async (req, res) => {
       res.status(500).json({
         success: false,
         provider: 'Resend API',
+        error: err.message,
+        stack: err.stack
+      });
+      return;
+    }
+  }
+
+  // Try Mailjet if API Key and Secret Key are configured
+  if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
+    try {
+      console.log('[Diagnostic] Testing Mailjet Email API...');
+      const success = await sendEmailViaMailjet(String(to), subject, text, html);
+      if (success) {
+        res.json({
+          success: true,
+          provider: 'Mailjet API',
+          message: 'Mailjet email sending succeeded!'
+        });
+        return;
+      } else {
+        res.status(500).json({
+          success: false,
+          provider: 'Mailjet API',
+          error: 'Mailjet email sending failed. Check backend logs for API details.'
+        });
+        return;
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        provider: 'Mailjet API',
         error: err.message,
         stack: err.stack
       });
