@@ -250,7 +250,7 @@ async function sendEmailViaBrevo(to: string, subject: string, text: string, html
   }
 }
 
-async function sendEmailViaMailjet(to: string, subject: string, text: string, html: string): Promise<boolean> {
+async function sendEmailViaMailjet(to: string, subject: string, text: string, html: string, throwOnError = false): Promise<boolean> {
   const apiKey = process.env.MAILJET_API_KEY;
   const secretKey = process.env.MAILJET_SECRET_KEY;
   if (!apiKey || !secretKey) return false;
@@ -293,10 +293,16 @@ async function sendEmailViaMailjet(to: string, subject: string, text: string, ht
       return true;
     } else {
       console.error(`[Mailjet] API returned an error:`, data);
+      if (throwOnError) {
+        throw new Error(`Mailjet API error: ${JSON.stringify(data)}`);
+      }
       return false;
     }
   } catch (err) {
     console.error(`[Mailjet] Failed to connect to Mailjet API:`, err);
+    if (throwOnError) {
+      throw err;
+    }
     return false;
   }
 }
@@ -763,7 +769,7 @@ app.get('/api/test-email', async (req, res) => {
   if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
     try {
       console.log('[Diagnostic] Testing Mailjet Email API...');
-      const success = await sendEmailViaMailjet(String(to), subject, text, html);
+      const success = await sendEmailViaMailjet(String(to), subject, text, html, true);
       if (success) {
         res.json({
           success: true,
