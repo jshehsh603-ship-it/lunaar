@@ -6,7 +6,7 @@ const nextConfig = {
   async rewrites() {
     const backendUrl = process.env.NODE_ENV === 'development'
       ? 'http://localhost:3001'
-      : 'https://lunaar-backend.onrender.com';
+      : (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com');
 
     return [
       {
