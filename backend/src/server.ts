@@ -198,6 +198,52 @@ async function sendEmailViaResend(to: string, subject: string, text: string, htm
   }
 }
 
+async function sendEmailViaBrevo(to: string, subject: string, text: string, html: string): Promise<boolean> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const fromEmail = process.env.SMTP_FROM || 'jshehsh603@gmail.com';
+    console.log(`[Brevo] Sending email to ${to} via HTTP API...`);
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "Lunaar",
+          email: fromEmail
+        },
+        to: [
+          {
+            email: to,
+            name: to.split('@')[0]
+          }
+        ],
+        subject: subject,
+        htmlContent: html,
+        textContent: text
+      })
+    });
+
+    const data = await response.json() as any;
+    if (response.ok) {
+      console.log(`[Brevo] Email sent successfully! Message ID: ${data.messageId || 'N/A'}`);
+      return true;
+    } else {
+      console.error(`[Brevo] API returned an error:`, data);
+      return false;
+    }
+  } catch (err) {
+    console.error(`[Brevo] Failed to connect to Brevo API:`, err);
+    return false;
+  }
+}
+
 async function sendEmailViaMailjet(to: string, subject: string, text: string, html: string): Promise<boolean> {
   const apiKey = process.env.MAILJET_API_KEY;
   const secretKey = process.env.MAILJET_SECRET_KEY;
@@ -285,6 +331,11 @@ async function sendActivationEmail(email: string, token: string, username: strin
     if (success) return;
   }
 
+  if (process.env.BREVO_API_KEY) {
+    const success = await sendEmailViaBrevo(email, subject, text, html);
+    if (success) return;
+  }
+
   if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
     const success = await sendEmailViaMailjet(email, subject, text, html);
     if (success) return;
@@ -353,6 +404,11 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
 
   if (process.env.RESEND_API_KEY) {
     const success = await sendEmailViaResend(adminEmail, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    const success = await sendEmailViaBrevo(adminEmail, subject, text, html);
     if (success) return;
   }
 
@@ -659,6 +715,37 @@ app.get('/api/test-email', async (req, res) => {
       res.status(500).json({
         success: false,
         provider: 'Resend API',
+        error: err.message,
+        stack: err.stack
+      });
+      return;
+    }
+  }
+
+  // Try Brevo if API Key is configured
+  if (process.env.BREVO_API_KEY) {
+    try {
+      console.log('[Diagnostic] Testing Brevo Email API...');
+      const success = await sendEmailViaBrevo(String(to), subject, text, html);
+      if (success) {
+        res.json({
+          success: true,
+          provider: 'Brevo API',
+          message: 'Brevo email sending succeeded!'
+        });
+        return;
+      } else {
+        res.status(500).json({
+          success: false,
+          provider: 'Brevo API',
+          error: 'Brevo email sending failed. Check backend logs for API details.'
+        });
+        return;
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        provider: 'Brevo API',
         error: err.message,
         stack: err.stack
       });
