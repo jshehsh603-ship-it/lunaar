@@ -257,6 +257,67 @@ async function sendActivationEmail(email: string, token: string, username: strin
   }
 }
 
+async function sendAdminActivationNotification(userEmail: string, token: string, username: string) {
+  const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
+  const adminEmail = process.env.ADMIN_EMAIL || 'jshehsh603@gmail.com';
+  
+  console.log(`\n==================================================`);
+  console.log(`📧 ADMIN NOTIFICATION EMAIL FOR NEW USER: ${userEmail}`);
+  console.log(`🔗 ACTIVATION LINK: ${activationLink}`);
+  console.log(`==================================================\n`);
+
+  const subject = `[Lunaar Admin] New Signup Pending Verification: ${username}`;
+  const text = `A new user has registered. Username: ${username}, Email: ${userEmail}. Copy and send this activation link to them: ${activationLink}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <h2 style="color: #FF3B3B; font-size: 24px; margin: 0 0 20px 0; border-bottom: 2px solid #FF3B3B; padding-bottom: 10px;">Lunaar Admin Alert</h2>
+      
+      <p style="font-size: 16px; margin: 0 0 20px 0;">A new user has registered on your website and is pending activation.</p>
+      
+      <div style="background-color: #f7fafc; border: 1px solid #edf2f7; padding: 20px; border-radius: 6px; margin-bottom: 24px;">
+        <p style="margin: 0 0 8px 0;"><strong>Username:</strong> ${username}</p>
+        <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${userEmail}</p>
+        <p style="margin: 0;"><strong>Token:</strong> ${token}</p>
+      </div>
+      
+      <p style="font-size: 15px; margin: 0 0 12px 0;"><strong>Manual Activation Link:</strong></p>
+      <div style="background-color: #f7fafc; border: 1px dashed #cbd5e0; padding: 12px; font-family: monospace; font-size: 13px; word-break: break-all; margin-bottom: 24px;">
+        ${activationLink}
+      </div>
+
+      <p style="font-size: 14px; color: #718096; margin-bottom: 24px;">
+        Since you are on the Resend Free Sandbox tier, you can forward this email to the user, copy and email the activation link to them, or activate their account directly from your Admin Dashboard.
+      </p>
+
+      <div style="text-align: center;">
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/rolado" style="display: inline-block; background-color: #E53E3E; color: #ffffff; padding: 12px 28px; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px;">Open Admin Panel</a>
+      </div>
+    </div>
+  `;
+
+  if (process.env.RESEND_API_KEY) {
+    const success = await sendEmailViaResend(adminEmail, subject, text, html);
+    if (success) return;
+  }
+
+  const activeTransporter = await getTransporter();
+  if (activeTransporter) {
+    try {
+      const fromEmail = process.env.SMTP_FROM || 'noreply@lunaar.com';
+      await activeTransporter.sendMail({
+        from: `"Lunaar Admin" <${fromEmail}>`,
+        to: adminEmail,
+        subject,
+        text,
+        html
+      });
+      console.log(`[nodemailer] Admin registration notification email sent to ${adminEmail}`);
+    } catch (err) {
+      console.error(`[nodemailer] Failed to send admin activation notification:`, err);
+    }
+  }
+}
+
 async function sendWelcomeEmail(email: string, username: string) {
   const activeTransporter = await getTransporter();
   const upgradeLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile?upgrade=true`;
@@ -356,6 +417,9 @@ app.post('/api/register', async (req, res) => {
     sendActivationEmail(email, token, username).catch(err => {
       console.error('[Email] Error sending activation email asynchronously:', err);
     });
+    sendAdminActivationNotification(email, token, username).catch(err => {
+      console.error('[Email] Error sending admin activation notification asynchronously:', err);
+    });
   }
 
   res.json({ 
@@ -411,6 +475,9 @@ app.post('/api/resend-activation', async (req, res) => {
 
   sendActivationEmail(targetEmail, token, user.username).catch(err => {
     console.error('[Email] Error sending activation email asynchronously:', err);
+  });
+  sendAdminActivationNotification(targetEmail, token, user.username).catch(err => {
+    console.error('[Email] Error sending admin activation notification asynchronously:', err);
   });
 
   res.json({ success: true, email: targetEmail });
@@ -924,7 +991,9 @@ app.get('/api/admin/users', (req, res) => {
     country: user.country,
     isPremium: user.isPremium,
     createdAt: user.createdAt,
-    isOnline: userSocketMap.has(user.id)
+    isOnline: userSocketMap.has(user.id),
+    activated: user.activated,
+    activationToken: user.activationToken
   }));
   res.json(usersWithOnlineStatus);
 });
@@ -938,6 +1007,40 @@ app.post('/api/admin/users/:id/vip', (req, res) => {
     return;
   }
   user.isPremium = !user.isPremium;
+  db.createOrUpdateUser(user);
+  
+  // Notify client if online
+  const socketId = userSocketMap.get(id);
+  if (socketId) {
+    io.to(socketId).emit('profile_updated', user);
+  }
+  
+  res.json({ success: true, user });
+});
+
+// Admin Toggle Activation Status
+app.post('/api/admin/users/:id/activate', (req, res) => {
+  const { id } = req.params;
+  const user = db.getUser(id);
+  if (!user) {
+    res.status(404).json({ success: false, error: 'User not found.' });
+    return;
+  }
+  user.activated = !user.activated;
+  if (user.activated) {
+    user.activationToken = undefined;
+    
+    // Send welcome email upon manual activation
+    if (user.email) {
+      sendWelcomeEmail(user.email, user.username).catch(err => {
+        console.error('[nodemailer] Failed to send welcome email upon manual activation:', err);
+      });
+    }
+  } else {
+    // Generate new token if deactivated
+    user.activationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+  
   db.createOrUpdateUser(user);
   
   // Notify client if online

@@ -34,6 +34,8 @@ interface UserRecord {
   isPremium: boolean;
   createdAt: string;
   isOnline: boolean;
+  activated?: boolean;
+  activationToken?: string;
 }
 
 interface ReportRecord {
@@ -76,6 +78,7 @@ export default function AdminPage() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userFilterVip, setUserFilterVip] = useState<'all' | 'vip' | 'free'>('all');
   const [userFilterOnline, setUserFilterOnline] = useState<'all' | 'online' | 'offline'>('all');
+  const [userFilterActivation, setUserFilterActivation] = useState<'all' | 'activated' | 'pending'>('all');
   
   const [loading, setLoading] = useState(false);
   
@@ -258,6 +261,30 @@ export default function AdminPage() {
         }
       } else {
         showToast('Failed to toggle VIP status.');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Network error.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleActivation = async (userId: string) => {
+    audioSynth.playClick();
+    setActionLoading(`activate-${userId}`);
+    try {
+      const res = await adminFetch(`/api/admin/users/${userId}/activate`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`User ${data.user.username} activation status updated!`);
+        
+        // Optimistic update of local state
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, activated: data.user.activated, activationToken: data.user.activationToken } : u));
+      } else {
+        showToast('Failed to toggle activation status.');
       }
     } catch (err) {
       console.error(err);
@@ -473,7 +500,10 @@ export default function AdminPage() {
     const matchesOnline = userFilterOnline === 'all' || 
                           (userFilterOnline === 'online' && user.isOnline) || 
                           (userFilterOnline === 'offline' && !user.isOnline);
-    return matchesSearch && matchesVip && matchesOnline;
+    const matchesActivation = userFilterActivation === 'all' ||
+                              (userFilterActivation === 'activated' && user.activated) ||
+                              (userFilterActivation === 'pending' && !user.activated);
+    return matchesSearch && matchesVip && matchesOnline && matchesActivation;
   });
 
   return (
@@ -789,6 +819,16 @@ export default function AdminPage() {
                         <option value="online">🟢 Online</option>
                         <option value="offline">⚪ Offline</option>
                       </select>
+
+                      <select
+                        value={userFilterActivation}
+                        onChange={(e) => setUserFilterActivation(e.target.value as any)}
+                        className="bg-slate-900 border border-white/5 rounded-xl py-2 px-3 text-xs font-semibold outline-none cursor-pointer"
+                      >
+                        <option value="all">All Activation States</option>
+                        <option value="activated">✅ Activated Only</option>
+                        <option value="pending">⏳ Pending Activation</option>
+                      </select>
                     </div>
                   </div>
 
@@ -801,6 +841,7 @@ export default function AdminPage() {
                           <th className="p-4">Location</th>
                           <th className="p-4">Gender</th>
                           <th className="p-4">Status</th>
+                          <th className="p-4">Activation</th>
                           <th className="p-4">Joined</th>
                           <th className="p-4 text-right">Moderation Actions</th>
                         </tr>
@@ -808,7 +849,7 @@ export default function AdminPage() {
                       <tbody>
                         {filteredUsers.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-slate-500 font-bold">
+                            <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">
                               No user profiles found matching filters.
                             </td>
                           </tr>
@@ -849,10 +890,55 @@ export default function AdminPage() {
                                   </span>
                                 )}
                               </td>
+                              <td className="p-4">
+                                {user.activated ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                    Activated
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                                    Pending
+                                  </span>
+                                )}
+                              </td>
                               <td className="p-4 text-slate-400 font-semibold">
                                 {new Date(user.createdAt).toLocaleDateString()}
                               </td>
                               <td className="p-4 text-right flex justify-end gap-2">
+                                <button
+                                  onClick={() => handleToggleActivation(user.id)}
+                                  disabled={actionLoading !== null}
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition ${
+                                    user.activated
+                                      ? 'bg-slate-950/20 border-white/10 text-slate-400 hover:text-amber-400 hover:border-amber-500/20'
+                                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                  }`}
+                                >
+                                  {actionLoading === `activate-${user.id}` ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin mx-auto" />
+                                  ) : user.activated ? (
+                                    'Deactivate'
+                                  ) : (
+                                    'Activate'
+                                  )}
+                                </button>
+
+                                {!user.activated && user.activationToken && (
+                                  <button
+                                    onClick={() => {
+                                      const link = `${window.location.origin}/activate?token=${user.activationToken}`;
+                                      navigator.clipboard.writeText(link);
+                                      showToast('Activation link copied to clipboard!');
+                                      audioSynth.playClick();
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold border bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition"
+                                  >
+                                    Copy Link
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => handleToggleVip(user.id)}
                                   disabled={actionLoading !== null}
