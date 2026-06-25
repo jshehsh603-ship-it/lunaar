@@ -307,6 +307,56 @@ async function sendEmailViaMailjet(to: string, subject: string, text: string, ht
   }
 }
 
+async function sendEmailViaGoogleScript(to: string, subject: string, text: string, html: string, throwOnError = false): Promise<boolean> {
+  const scriptUrl = process.env.GOOGLE_SCRIPT_URL;
+  if (!scriptUrl) return false;
+
+  try {
+    console.log(`[Google Apps Script] Sending email to ${to} via Web App...`);
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        htmlBody: html,
+        secret: process.env.GOOGLE_SCRIPT_SECRET || 'lunaar_secret_123'
+      })
+    });
+
+    const textResponse = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(textResponse);
+    } catch (e) {
+      console.error(`[Google Apps Script] Response was not JSON:`, textResponse);
+      if (throwOnError) {
+        throw new Error(`Google Apps Script returned non-JSON response: ${textResponse}`);
+      }
+      return false;
+    }
+
+    if (response.ok && data.status === 'success') {
+      console.log(`[Google Apps Script] Email sent successfully!`);
+      return true;
+    } else {
+      console.error(`[Google Apps Script] Web App returned an error:`, data);
+      if (throwOnError) {
+        throw new Error(`Google Apps Script API error: ${JSON.stringify(data)}`);
+      }
+      return false;
+    }
+  } catch (err) {
+    console.error(`[Google Apps Script] Failed to connect to Web App:`, err);
+    if (throwOnError) {
+      throw err;
+    }
+    return false;
+  }
+}
+
 async function sendActivationEmail(email: string, token: string, username: string) {
   const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
   
@@ -350,6 +400,11 @@ async function sendActivationEmail(email: string, token: string, username: strin
 
   if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
     const success = await sendEmailViaMailjet(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    const success = await sendEmailViaGoogleScript(email, subject, text, html);
     if (success) return;
   }
 
@@ -429,6 +484,11 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
     if (success) return;
   }
 
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    const success = await sendEmailViaGoogleScript(adminEmail, subject, text, html);
+    if (success) return;
+  }
+
   const activeTransporter = await getTransporter();
   if (activeTransporter) {
     try {
@@ -491,8 +551,18 @@ async function sendWelcomeEmail(email: string, username: string) {
     if (success) return;
   }
 
+  if (process.env.BREVO_API_KEY) {
+    const success = await sendEmailViaBrevo(email, subject, text, html);
+    if (success) return;
+  }
+
   if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
     const success = await sendEmailViaMailjet(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    const success = await sendEmailViaGoogleScript(email, subject, text, html);
     if (success) return;
   }
 
@@ -702,6 +772,37 @@ app.get('/api/test-email', async (req, res) => {
   const subject = "Lunaar Email Test Connection";
   const text = "If you receive this, your backend email configuration is 100% correct!";
   const html = "<h3>Connection Successful!</h3><p>Your backend email configuration on Render is working perfectly.</p>";
+
+  // Try Google Apps Script first if configured
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    try {
+      console.log('[Diagnostic] Testing Google Apps Script Web App...');
+      const success = await sendEmailViaGoogleScript(String(to), subject, text, html, true);
+      if (success) {
+        res.json({
+          success: true,
+          provider: 'Google Apps Script',
+          message: 'Google Apps Script email sending succeeded!'
+        });
+        return;
+      } else {
+        res.status(500).json({
+          success: false,
+          provider: 'Google Apps Script',
+          error: 'Google Apps Script sending failed. Check backend logs or script execution logs.'
+        });
+        return;
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        provider: 'Google Apps Script',
+        error: err.message,
+        stack: err.stack
+      });
+      return;
+    }
+  }
 
   // Try Resend first if API Key is configured
   if (process.env.RESEND_API_KEY) {
