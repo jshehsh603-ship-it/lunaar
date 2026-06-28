@@ -605,7 +605,8 @@ app.post('/api/register', async (req, res) => {
   const userId = `u_${Math.random().toString(36).substring(2, 11)}`;
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  const autoActivate = !process.env.SMTP_USER && !process.env.RESEND_API_KEY; // Auto-activate if no real SMTP/Resend server is configured
+  const hasEmailProvider = !!(process.env.SMTP_USER || process.env.RESEND_API_KEY || process.env.GOOGLE_SCRIPT_URL || process.env.BREVO_API_KEY || (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY));
+  const autoActivate = !hasEmailProvider; // Auto-activate only if NO email provider is configured
 
   const userProfile = db.createOrUpdateUser({
     id: userId,
