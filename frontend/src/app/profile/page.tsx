@@ -30,7 +30,6 @@ function ProfileContent() {
   const [gender, setGender] = useState<'male' | 'female' | 'everyone'>('everyone');
   const [country, setCountry] = useState('World');
   const [isPremium, setIsPremium] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   // Stats info
   const [followers, setFollowers] = useState(48);
@@ -85,40 +84,7 @@ function ProfileContent() {
       .catch(() => {});
   }, []);
 
-  // Handle avatar image simulation upload
-  const handleAvatarChange = async () => {
-    audioSynth.playClick();
-    setUploading(true);
-    try {
-      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
-        ? 'http://localhost:3001'
-        : window.location.origin;
-      const res = await fetch(`${backendUrl}/api/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const updated = {
-          ...profile,
-          avatarUrl: data.url
-        };
-        setProfile(updated);
-        localStorage.setItem('lunaar_user', JSON.stringify(updated));
-        confetti({ particleCount: 30, spread: 40 });
-      }
-    } catch (e) {
-      // Fallback local seed
-      const updated = {
-        ...profile,
-        avatarUrl: `https://api.dicebear.com/7.x/lorelei/svg?seed=${username}_${Math.random()}`
-      };
-      setProfile(updated);
-      localStorage.setItem('lunaar_user', JSON.stringify(updated));
-    } finally {
-      setUploading(false);
-    }
-  };
+
 
   // Save changes
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -192,21 +158,10 @@ function ProfileContent() {
             )}
 
             {/* Avatar container */}
-            <div className="relative group/avatar cursor-pointer mb-4">
-              <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-white/10 bg-slate-900 shadow-xl relative flex items-center justify-center">
-                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <RefreshCw className="w-6 h-6 animate-spin text-white" />
-                  </div>
-                )}
+            <div className="mb-4">
+              <div className="w-32 h-32 rounded-full border-2 border-brand-primary/30 bg-brand-primary/5 shadow-xl relative flex items-center justify-center">
+                <User className="w-16 h-16 text-brand-primary" strokeWidth={1.5} />
               </div>
-              <button 
-                onClick={handleAvatarChange}
-                className="absolute bottom-1 right-1 p-2 rounded-xl bg-brand-primary text-white border border-brand-darkBg group-hover/avatar:scale-105 transition"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
             </div>
 
             {/* User Title display */}
