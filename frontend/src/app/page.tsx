@@ -137,7 +137,7 @@ export default function LandingPage() {
               (window as any).google.accounts.id.renderButton(btnParent, {
                 theme: 'outline',
                 size: 'large',
-                text: 'continue_with',
+                text: 'signin_with',
                 shape: 'rectangular',
                 width: 372
               });
