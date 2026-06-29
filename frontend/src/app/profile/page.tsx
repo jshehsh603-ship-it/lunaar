@@ -39,14 +39,15 @@ function ProfileContent() {
 
 
 
-  // Load profile from localStorage
+  // Load profile from localStorage and auto-detect country location
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const savedUserStr = localStorage.getItem('lunaar_user');
+    let parsed: any = null;
     if (savedUserStr) {
       try {
-        const parsed = JSON.parse(savedUserStr);
+        parsed = JSON.parse(savedUserStr);
         setProfile(parsed);
         setUsername(parsed.username || '');
         setBio(parsed.bio || '');
@@ -55,6 +56,33 @@ function ProfileContent() {
         setIsPremium(parsed.isPremium || false);
       } catch (e) {}
     }
+
+    // Auto-detect country based on current IP/location
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.country_name) {
+          const detectedCountry = data.country_name;
+          
+          if (parsed) {
+            const hasVip = parsed.isPremium || false;
+            // If they don't have VIP, force the country to match their actual location
+            if (!hasVip) {
+              setCountry(detectedCountry);
+              const updated = { ...parsed, country: detectedCountry };
+              setProfile(updated);
+              localStorage.setItem('lunaar_user', JSON.stringify(updated));
+            } else if (!parsed.country || parsed.country === 'World') {
+              // If they have VIP but no country is set yet, initialize it
+              setCountry(detectedCountry);
+              const updated = { ...parsed, country: detectedCountry };
+              setProfile(updated);
+              localStorage.setItem('lunaar_user', JSON.stringify(updated));
+            }
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Handle avatar image simulation upload
@@ -190,23 +218,6 @@ function ProfileContent() {
               {bio || 'Add a brief bio description below to tell matches about yourself.'}
             </p>
 
-            <div className="h-px bg-white/5 w-full my-5"></div>
-
-            {/* Statistics dashboard */}
-            <div className="grid grid-cols-3 gap-4 w-full">
-              <div className="flex flex-col">
-                <span className="font-extrabold text-white text-lg">{followers}</span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Followers</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-white text-lg">{following}</span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Following</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-white text-lg">{totalMatches}</span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Matches</span>
-              </div>
-            </div>
           </div>
 
           {/* Settings / System details cards */}
@@ -223,6 +234,19 @@ function ProfileContent() {
               <div className="flex items-center justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">User Registered</span>
                 <span className="text-slate-300">June 15, 2026</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span className="text-slate-400">VIP Subscription</span>
+                {isPremium ? (
+                  <span className="text-amber-400 font-bold flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 fill-amber-400" />
+                    Enabled (Active)
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-bold">
+                    Disabled (Free Tier)
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-400">Match Server Connection</span>
@@ -259,11 +283,20 @@ function ProfileContent() {
 
                 {/* Country */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">My Country Location</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>My Country Location</span>
+                    {!isPremium && (
+                      <span className="text-[10px] text-amber-500 font-bold flex items-center gap-1 normal-case">
+                        <Star className="w-3 h-3 fill-amber-500" />
+                        VIP required to change
+                      </span>
+                    )}
+                  </label>
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 border border-white/5 text-white outline-none focus:border-brand-primary"
+                    disabled={!isPremium}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 border border-white/5 text-white outline-none focus:border-brand-primary ${!isPremium ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     <option value="World">World (No Filter)</option>
                     {COUNTRIES.map(c => (
