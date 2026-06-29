@@ -118,6 +118,17 @@ export function setupSocketHandlers(io: Server) {
       if (userId) {
         matchmaker.removeFromQueue(userId);
 
+        // Also end any active match the user is in and notify partner!
+        const endResult = matchmaker.endActiveMatch(socket.id);
+        if (endResult) {
+          const { partnerSocketId, durationSeconds } = endResult;
+          const partnerUserId = socketUserMap.get(partnerSocketId);
+          if (partnerUserId) {
+            db.addMatchHistory(userId, partnerUserId, durationSeconds);
+          }
+          io.to(partnerSocketId).emit('partner_skipped');
+        }
+
         // Clean up from private room maps if they were in one
         const roomId = socketPrivateRoomMap.get(socket.id);
         if (roomId) {

@@ -257,11 +257,26 @@ export default function ChatPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Dynamic online count fluctuation (flucuates around current count by ±5 users)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveOnlineCount(prev => {
+        const change = Math.floor((Math.random() - 0.5) * 8); // small change
+        return Math.max(1000, prev + change);
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Keep refs synchronized with React states to prevent stale closures in timeouts
   useEffect(() => {
     isMatchedRef.current = isMatched;
     if (!isMatched) {
       setMobileActiveTab('video');
+    } else {
+      if (isMobile) {
+        setMobileActiveTab('chat');
+      }
     }
   }, [isMatched]);
 
@@ -1160,7 +1175,8 @@ export default function ChatPage() {
     pc.oniceconnectionstatechange = () => {
       console.log('WebRTC ICE state changed:', pc.iceConnectionState);
       if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-        // Fallback or restart if disconnected
+        console.log('ICE Connection disconnected. Auto-skipping to next partner.');
+        handleSkipNext();
       }
     };
 
@@ -2098,6 +2114,49 @@ export default function ChatPage() {
                 } ${remoteFilter === 'blur' && !remoteFace ? 'filter blur-2xl scale-105' : ''}`}
               />
 
+              {/* STOPPED/IDLE STATE: LunaarFun TV Logo & Online counter (Ome TV style) */}
+              {!isMatching && !isMatched && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 p-6 select-none pointer-events-none">
+                  <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+                    {/* TV Body */}
+                    <div className="relative w-44 h-36 bg-[#ff532d] rounded-[36px] p-4 flex items-center shadow-[0_10px_30px_rgba(255,83,45,0.25)] border border-[#ff6947]/30">
+                      {/* Antenna 1 */}
+                      <div className="absolute bottom-full left-[35%] w-1.5 h-10 bg-[#e04522] origin-bottom -rotate-30 rounded-full"></div>
+                      <div className="absolute -top-10 left-[26%] w-3 h-3 bg-[#ff532d] rounded-full"></div>
+                      
+                      {/* Antenna 2 */}
+                      <div className="absolute bottom-full right-[35%] w-1.5 h-10 bg-[#e04522] origin-bottom rotate-30 rounded-full"></div>
+                      <div className="absolute -top-10 right-[26%] w-3 h-3 bg-[#ff532d] rounded-full"></div>
+
+                      {/* TV Screen */}
+                      <div className="w-[78%] h-full bg-white rounded-[24px] flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
+                        <span className="font-extrabold text-2xl tracking-tight text-[#ff532d] leading-none font-sans">Lunaar</span>
+                        <span className="font-black text-xl tracking-wider text-[#10b981] mt-0.5 leading-none font-sans">FUN</span>
+                      </div>
+
+                      {/* Right Control Knobs Panel */}
+                      <div className="w-[22%] h-full flex flex-col items-center justify-center gap-3.5 pl-2.5">
+                        <div className="w-2.5 h-2.5 bg-white rounded-full shadow-md"></div>
+                        <div className="w-2.5 h-2.5 bg-white rounded-full shadow-md"></div>
+                        <div className="w-3.5 h-1.5 bg-[#e04522] rounded-sm shadow-md mt-1"></div>
+                      </div>
+
+                      {/* TV Legs */}
+                      <div className="absolute -bottom-2.5 left-[20%] w-3.5 h-3 bg-[#e04522] rounded-b-md transform -rotate-12"></div>
+                      <div className="absolute -bottom-2.5 right-[20%] w-3.5 h-3 bg-[#e04522] rounded-b-md transform rotate-12"></div>
+                    </div>
+
+                    {/* Online Stats indicator */}
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/5 shadow-md">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></span>
+                      <span className="text-xs font-extrabold text-slate-200 font-sans tracking-wide">
+                        {activeOnlineCount.toLocaleString()} users online
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Remote Video Filters Overlay */}
               {isMatched && remoteFilter !== 'none' && (
                 <>
@@ -2573,7 +2632,9 @@ export default function ChatPage() {
 
                 {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL */}
                 {isMobile && mobileActiveTab === 'chat' && (
-                  <div className="absolute inset-0 z-30 flex flex-col justify-end p-3.5 pb-16 bg-black/15 select-text pointer-events-auto">
+                  <div className={`absolute inset-0 z-30 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
+                    mobileControlsVisible ? 'pb-20' : 'pb-3.5'
+                  }`}>
                     {/* Chat messages list */}
                     <div className="flex-grow flex flex-col justify-end overflow-y-auto mb-2 pr-1 custom-scrollbar text-right max-h-[calc(100%-88px)] select-text">
                       <div className="flex flex-col gap-1 justify-end select-text">
@@ -2686,7 +2747,7 @@ export default function ChatPage() {
           {/* LOWER ACTION CONTROL PANEL (skip next, likes, reports, gifts) */}
           <div className={`w-full ${
             isMobile 
-              ? `fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-none pb-2 transition-all duration-300 transform ${
+              ? `fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-none pb-0 transition-all duration-300 transform ${
                   isMatched && !mobileControlsVisible ? 'translate-y-full' : 'translate-y-0'
                 }` 
               : 'relative min-h-20 py-2 min-[1300px]:py-0 min-[1300px]:h-20 mt-4 lg:mt-6 px-6 flex flex-col min-[1300px]:flex-row items-center justify-between gap-4 flex-shrink-0'
@@ -2909,7 +2970,7 @@ export default function ChatPage() {
             {/* Mobile Bottom Navigation Bar (Gear, Mic, Video, Masks, Chat) */}
             <div 
               onClick={(e) => e.stopPropagation()}
-              className="flex lg:hidden items-center justify-around w-full py-2 border-t border-white/10 bg-slate-950/55 backdrop-blur-md mt-1 pointer-events-auto relative z-50"
+              className="flex lg:hidden items-center justify-around w-full py-2 border-t border-white/10 bg-slate-950/55 backdrop-blur-md pointer-events-auto relative z-50"
             >
               {/* Settings Button */}
               <div className="relative">
