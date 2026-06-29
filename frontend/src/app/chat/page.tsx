@@ -2231,6 +2231,22 @@ export default function ChatPage() {
                   <span>{formatTime(matchDuration)}</span>
                 </div>
               )}
+
+              {/* Tap Screen to Show Controls Tip Overlay */}
+              <AnimatePresence>
+                {isMobile && isMatched && !mobileControlsVisible && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 text-white/90 text-[10px] font-extrabold tracking-wider uppercase flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)] pointer-events-none z-30"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#e52424] animate-ping" />
+                    <span>Tap screen to view options</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* IDLE STATE INTEREST OVERLAY */}
