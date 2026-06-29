@@ -729,6 +729,68 @@ app.post('/api/activate', (req, res) => {
   });
 });
 
+// Google Authentication endpoint
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    res.status(400).json({ success: false, error: 'Google credential is required.' });
+    return;
+  }
+
+  try {
+    const googleVerifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    if (!googleVerifyRes.ok) {
+      res.status(400).json({ success: false, error: 'Invalid Google credential token.' });
+      return;
+    }
+
+    const payload = await googleVerifyRes.json() as any;
+    const { email, name, picture } = payload;
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Failed to retrieve email from Google token.' });
+      return;
+    }
+
+    // Find or create user in our database
+    let user = db.getUserByEmail(email);
+    if (!user) {
+      const userId = `u_${Math.random().toString(36).substring(2, 11)}`;
+      user = db.createOrUpdateUser({
+        id: userId,
+        username: name || email.split('@')[0],
+        email,
+        password: Math.random().toString(36).substring(2, 15), // random password for security
+        activated: true, // Google accounts are pre-activated/verified!
+        avatarUrl: picture || `https://api.dicebear.com/7.x/lorelei/svg?seed=${name || 'Stranger'}`,
+        isPremium: false
+      });
+      console.log(`[Google Auth] Created new user: ${user.username} (${user.email})`);
+    } else {
+      // Auto-activate existing user if they login with verified Google account
+      if (!user.activated) {
+        user.activated = true;
+        user.activationToken = undefined;
+        db.createOrUpdateUser(user);
+        console.log(`[Google Auth] Activated existing user: ${user.username}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        isPremium: user.isPremium
+      }
+    });
+  } catch (err) {
+    console.error('[Google Auth] Verification error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error during Google authentication.' });
+  }
+});
+
 // Login endpoint
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
