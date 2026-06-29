@@ -135,7 +135,7 @@ export default function LandingPage() {
             const btnParent = document.getElementById('google-signin-btn');
             if (btnParent) {
               (window as any).google.accounts.id.renderButton(btnParent, {
-                theme: 'filled_blue',
+                theme: 'outline',
                 size: 'large',
                 text: 'continue_with',
                 shape: 'rectangular',
