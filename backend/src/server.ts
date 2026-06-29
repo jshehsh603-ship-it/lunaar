@@ -357,8 +357,9 @@ async function sendEmailViaGoogleScript(to: string, subject: string, text: strin
   }
 }
 
-async function sendActivationEmail(email: string, token: string, username: string) {
-  const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
+async function sendActivationEmail(email: string, token: string, username: string, origin?: string) {
+  const baseUrl = origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const activationLink = `${baseUrl}/activate?token=${token}`;
   
   console.log(`\n==================================================`);
   console.log(`📧 ACTIVATION EMAIL FOR: ${email}`);
@@ -372,12 +373,12 @@ async function sendActivationEmail(email: string, token: string, username: strin
       <!-- Logo Section -->
       <div style="margin-bottom: 28px;">
         <h1 style="color: #FF3B3B; font-size: 32px; font-weight: 900; letter-spacing: 4px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">LUNAAR</h1>
-        <a href="http://localhost:3000" style="color: #4A5568; text-decoration: none; font-size: 13px; font-weight: 500; font-family: monospace;">lunaar.com</a>
+        <a href="${baseUrl}" style="color: #4A5568; text-decoration: none; font-size: 13px; font-weight: 500; font-family: monospace;">lunaar.com</a>
       </div>
 
       <!-- Content -->
       <div style="font-size: 16px; line-height: 1.6; color: #2D3748; margin-bottom: 32px; font-family: Arial, sans-serif;">
-        <p style="margin: 0 0 12px 0;">Thank you for joining <a href="http://localhost:3000" style="color: #E53E3E; text-decoration: underline; font-weight: bold;">Lunaar</a>.</p>
+        <p style="margin: 0 0 12px 0;">Thank you for joining <a href="${baseUrl}" style="color: #E53E3E; text-decoration: underline; font-weight: bold;">Lunaar</a>.</p>
         <p style="margin: 0;">Please <span style="font-weight: bold;">login now</span> to activate your account and get access to cool video chat features available to only members.</p>
       </div>
 
@@ -431,8 +432,9 @@ async function sendActivationEmail(email: string, token: string, username: strin
   }
 }
 
-async function sendAdminActivationNotification(userEmail: string, token: string, username: string) {
-  const activationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/activate?token=${token}`;
+async function sendAdminActivationNotification(userEmail: string, token: string, username: string, origin?: string) {
+  const baseUrl = origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const activationLink = `${baseUrl}/activate?token=${token}`;
   const adminEmail = process.env.ADMIN_EMAIL || 'jshehsh603@gmail.com';
   
   console.log(`\n==================================================`);
@@ -464,7 +466,7 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
       </p>
 
       <div style="text-align: center;">
-        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/rolado" style="display: inline-block; background-color: #E53E3E; color: #ffffff; padding: 12px 28px; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px;">Open Admin Panel</a>
+        <a href="${baseUrl}/rolado" style="display: inline-block; background-color: #E53E3E; color: #ffffff; padding: 12px 28px; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px;">Open Admin Panel</a>
       </div>
     </div>
   `;
@@ -507,9 +509,10 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
   }
 }
 
-async function sendWelcomeEmail(email: string, username: string) {
+async function sendWelcomeEmail(email: string, username: string, origin?: string) {
+  const baseUrl = origin || process.env.FRONTEND_URL || 'http://localhost:3000';
   const activeTransporter = await getTransporter();
-  const upgradeLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile?upgrade=true`;
+  const upgradeLink = `${baseUrl}/profile?upgrade=true`;
   
   console.log(`\n==================================================`);
   console.log(`📧 SENDING WELCOME EMAIL TO: ${email}`);
@@ -619,10 +622,10 @@ app.post('/api/register', async (req, res) => {
   });
 
   if (!autoActivate) {
-    sendActivationEmail(email, token, username).catch(err => {
+    sendActivationEmail(email, token, username, req.headers.origin || undefined).catch(err => {
       console.error('[Email] Error sending activation email asynchronously:', err);
     });
-    sendAdminActivationNotification(email, token, username).catch(err => {
+    sendAdminActivationNotification(email, token, username, req.headers.origin || undefined).catch(err => {
       console.error('[Email] Error sending admin activation notification asynchronously:', err);
     });
   }
@@ -678,10 +681,10 @@ app.post('/api/resend-activation', async (req, res) => {
     activationToken: token
   });
 
-  sendActivationEmail(targetEmail, token, user.username).catch(err => {
+  sendActivationEmail(targetEmail, token, user.username, req.headers.origin || undefined).catch(err => {
     console.error('[Email] Error sending activation email asynchronously:', err);
   });
-  sendAdminActivationNotification(targetEmail, token, user.username).catch(err => {
+  sendAdminActivationNotification(targetEmail, token, user.username, req.headers.origin || undefined).catch(err => {
     console.error('[Email] Error sending admin activation notification asynchronously:', err);
   });
 
@@ -709,7 +712,7 @@ app.post('/api/activate', (req, res) => {
   });
 
   if (updatedUser.email) {
-    sendWelcomeEmail(updatedUser.email, updatedUser.username).catch(err => {
+    sendWelcomeEmail(updatedUser.email, updatedUser.username, req.headers.origin || undefined).catch(err => {
       console.error('[nodemailer] Failed to send welcome email:', err);
     });
   }
@@ -1330,7 +1333,7 @@ app.post('/api/admin/users/:id/activate', (req, res) => {
     
     // Send welcome email upon manual activation
     if (user.email) {
-      sendWelcomeEmail(user.email, user.username).catch(err => {
+      sendWelcomeEmail(user.email, user.username, req.headers.origin || undefined).catch(err => {
         console.error('[nodemailer] Failed to send welcome email upon manual activation:', err);
       });
     }
