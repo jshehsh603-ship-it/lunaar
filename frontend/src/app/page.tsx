@@ -42,6 +42,34 @@ export default function LandingPage() {
     setMounted(true);
   }, []);
 
+  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  
+  // Authentication states
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  
+  // Auth Form Fields
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Activation states
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationEmail, setActivationEmail] = useState('');
+  const [newActivationEmail, setNewActivationEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendError, setResendError] = useState('');
+
+  const getApiUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+  };
+
   const handleGoogleCredentialResponse = async (response: any) => {
     setAuthLoading(true);
     setAuthError('');
@@ -127,33 +155,6 @@ export default function LandingPage() {
       if (checkGoogle) clearInterval(checkGoogle);
     };
   }, [mounted, showAuthModal]);
-  const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  
-  // Authentication states
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  
-  // Auth Form Fields
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [nicknameInput, setNicknameInput] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Activation states
-  const [showActivationModal, setShowActivationModal] = useState(false);
-  const [activationEmail, setActivationEmail] = useState('');
-  const [newActivationEmail, setNewActivationEmail] = useState('');
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendMessage, setResendMessage] = useState('');
-  const [resendError, setResendError] = useState('');
-
-  const getApiUrl = () => {
-    if (typeof window === 'undefined') return '';
-    return window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
-  };
 
   // Authentication Handlers
   const handleAuthSubmit = async (e: React.FormEvent) => {
