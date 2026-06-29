@@ -1846,10 +1846,10 @@ export default function ChatPage() {
                       onClick={(e) => { e.stopPropagation(); setCountryFilterDropdownOpen(false); }} 
                     />
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full mb-2 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-40 max-h-60 overflow-y-auto backdrop-blur-md"
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute top-full mt-1.5 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-40 max-h-60 overflow-y-auto backdrop-blur-md"
                     >
                       {/* World option */}
                       <button
@@ -3142,10 +3142,10 @@ export default function ChatPage() {
                         onClick={(e) => { e.stopPropagation(); setCountryFilterDropdownOpen(false); }} 
                       />
                       <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute bottom-full mb-2 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-44 max-h-60 overflow-y-auto backdrop-blur-md"
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute top-full mt-1.5 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-44 max-h-60 overflow-y-auto backdrop-blur-md"
                       >
                         {/* World option */}
                         <button
