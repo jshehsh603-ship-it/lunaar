@@ -139,7 +139,8 @@ export default function LandingPage() {
                 size: 'large',
                 text: 'signin_with',
                 shape: 'rectangular',
-                width: 372
+                width: 372,
+                locale: 'en'
               });
             }
           } catch (e) {
