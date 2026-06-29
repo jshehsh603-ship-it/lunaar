@@ -2613,7 +2613,7 @@ export default function ChatPage() {
             }`}>
               
               {/* Row 1: Camera, Mic, and Settings Toggles (Hidden on mobile - moved to bottom navigation bar) */}
-              <div className="hidden lg:flex items-center justify-center gap-3 translate-y-6">
+              <div className="hidden lg:flex items-center justify-center gap-3">
                 {/* Microphone Option */}
                 <button
                   onClick={handleToggleMic}
@@ -2733,7 +2733,7 @@ export default function ChatPage() {
                 <button
                   onClick={handleOpenReport}
                   disabled={!isMatched}
-                  className="hidden lg:flex w-12 h-12 rounded-xl bg-white/5 hover:bg-red-950/20 border border-white/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 items-center justify-center transition duration-300 disabled:opacity-20 disabled:cursor-not-allowed active:scale-95 hover:shadow-[0_0_15px_rgba(239,68,68,0.15)] -translate-y-11"
+                  className="hidden lg:flex w-12 h-12 rounded-xl bg-white/5 hover:bg-red-950/20 border border-white/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 items-center justify-center transition duration-300 disabled:opacity-20 disabled:cursor-not-allowed active:scale-95 hover:shadow-[0_0_15px_rgba(239,68,68,0.15)]"
                   title="Report User"
                 >
                   <Shield className="w-5 h-5 text-red-500/80" />
@@ -2743,7 +2743,7 @@ export default function ChatPage() {
                   onClick={(e) => e.stopPropagation()}
                   className={`${
                     isMobile && mobileActiveTab === 'chat' ? 'hidden' : 'flex'
-                  } items-center gap-3 w-full max-w-md mx-auto relative lg:translate-x-32 min-[1300px]:translate-x-60 lg:-translate-y-10`}
+                  } items-center gap-3 w-full max-w-md mx-auto relative`}
                 >
                   <button
                     onClick={handleStartClick}
