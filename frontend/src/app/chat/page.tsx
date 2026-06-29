@@ -63,6 +63,7 @@ export default function ChatPage() {
   const [genderFilter, setGenderFilter] = useState<'everyone' | 'male' | 'female'>('everyone');
   const [genderFilterDropdownOpen, setGenderFilterDropdownOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState<string>('World');
+  const [countryFilterDropdownOpen, setCountryFilterDropdownOpen] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
@@ -1252,6 +1253,30 @@ export default function ChatPage() {
     return match ? match.flag : '🗺️';
   };
 
+  const getCountryCode = (countryName: string) => {
+    if (!countryName || countryName === 'World') return '';
+    const match = COUNTRIES.find(c => c.name.toLowerCase() === countryName.toLowerCase());
+    return match ? match.code.toLowerCase() : '';
+  };
+
+  const renderFlagIcon = (countryName: string, className: string = "w-4 h-3") => {
+    if (!countryName || countryName === 'World') {
+      return <span className={className}>🗺️</span>;
+    }
+    const code = getCountryCode(countryName);
+    if (!code) return <span className={className}>🗺️</span>;
+    return (
+      <img
+        src={`https://flagcdn.com/w20/${code}.png`}
+        alt={countryName}
+        className={`${className} object-cover rounded-sm`}
+        onError={(e) => {
+          (e.target as any).style.display = 'none';
+        }}
+      />
+    );
+  };
+
   const handleStopMatch = () => {
     audioSynth.playClick();
     if (loopbackMode) {
@@ -1796,27 +1821,95 @@ export default function ChatPage() {
           <div className="flex lg:hidden items-center gap-2 pointer-events-auto ml-auto">
             {/* Country selector */}
             <div className="relative">
-              <select
-                value={countryFilter}
-                onChange={(e) => handleCountryFilterClick(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-slate-950/45 border border-white/15 rounded-full py-1 pl-2.5 pr-6 text-[10px] font-bold text-slate-300 focus:border-brand-primary outline-none appearance-none cursor-pointer hover:bg-slate-900/60 backdrop-blur-sm transition max-w-[90px] h-8 pointer-events-auto"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  audioSynth.playClick();
+                  setCountryFilterDropdownOpen(!countryFilterDropdownOpen);
+                  setGenderFilterDropdownOpen(false);
+                }}
+                className="bg-slate-950/45 border border-white/15 hover:bg-slate-950/60 rounded-full py-1 pl-2.5 pr-6 text-[10px] font-bold text-slate-300 focus:border-brand-primary outline-none transition flex items-center gap-1.5 max-w-[90px] h-8 relative pointer-events-auto backdrop-blur-sm"
               >
-                <option value="World">🗺️ World</option>
-                {currentUser?.country && currentUser.country !== 'World' && (
-                  <option value={currentUser.country}>
-                    {getCountryFlag(currentUser.country)} {currentUser.country}
-                  </option>
+                {renderFlagIcon(countryFilter, "w-3.5 h-2.5 flex-shrink-0")}
+                <span className="truncate">{countryFilter}</span>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
+                  <ChevronDown className="w-3 h-3" />
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {countryFilterDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={(e) => { e.stopPropagation(); setCountryFilterDropdownOpen(false); }} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full mb-2 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-40 max-h-60 overflow-y-auto backdrop-blur-md"
+                    >
+                      {/* World option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleCountryFilterClick('World');
+                          setCountryFilterDropdownOpen(false);
+                        }}
+                        className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                          countryFilter === 'World'
+                            ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                      >
+                        {renderFlagIcon('World', "w-3.5 h-2.5 flex-shrink-0")}
+                        <span>World</span>
+                      </button>
+
+                      {/* User's own country if available */}
+                      {currentUser?.country && currentUser.country !== 'World' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCountryFilterClick(currentUser.country);
+                            setCountryFilterDropdownOpen(false);
+                          }}
+                          className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                            countryFilter === currentUser.country
+                              ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                              : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                          }`}
+                        >
+                          {renderFlagIcon(currentUser.country, "w-3.5 h-2.5 flex-shrink-0")}
+                          <span className="truncate">{currentUser.country}</span>
+                        </button>
+                      )}
+
+                      {/* Other countries */}
+                      {COUNTRIES.filter(c => c.name !== currentUser?.country).map(c => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => {
+                            handleCountryFilterClick(c.name);
+                            setCountryFilterDropdownOpen(false);
+                          }}
+                          className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                            countryFilter === c.name
+                              ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                              : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                          }`}
+                        >
+                          {renderFlagIcon(c.name, "w-3.5 h-2.5 flex-shrink-0")}
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
                 )}
-                {COUNTRIES.filter(c => c.name !== currentUser?.country).map(c => (
-                  <option key={c.name} value={c.name}>
-                    {c.flag} {c.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
-                <ChevronDown className="w-3 h-3" />
-              </div>
+              </AnimatePresence>
             </div>
 
             {/* Gender selector */}
@@ -3024,28 +3117,95 @@ export default function ChatPage() {
 
               {/* Country Dropdown */}
               <div className="relative">
-                <select
-                  value={countryFilter}
-                  onChange={(e) => handleCountryFilterClick(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-lg py-1.5 pl-2 pr-6 text-[10px] font-bold text-slate-300 focus:border-brand-primary outline-none appearance-none cursor-pointer hover:bg-white/10 hover:border-white/20 transition max-w-[100px]"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    audioSynth.playClick();
+                    setCountryFilterDropdownOpen(!countryFilterDropdownOpen);
+                    setGenderFilterDropdownOpen(false);
+                  }}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg py-1.5 pl-2.5 pr-6 text-[10px] font-bold text-slate-300 focus:border-brand-primary outline-none transition flex items-center gap-1.5 max-w-[120px] h-[30px] relative pointer-events-auto"
                 >
-                  <option value="World">🗺️ World</option>
-                  {/* User's own country */}
-                  {currentUser?.country && currentUser.country !== 'World' && (
-                    <option value={currentUser.country}>
-                      {getCountryFlag(currentUser.country)} {currentUser.country}
-                    </option>
+                  {renderFlagIcon(countryFilter, "w-3.5 h-2.5 flex-shrink-0")}
+                  <span className="truncate">{countryFilter}</span>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
+                    <ChevronDown className="w-3 h-3" />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {countryFilterDropdownOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={(e) => { e.stopPropagation(); setCountryFilterDropdownOpen(false); }} 
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute bottom-full mb-2 right-0 bg-slate-950/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 flex flex-col gap-1 w-44 max-h-60 overflow-y-auto backdrop-blur-md"
+                      >
+                        {/* World option */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCountryFilterClick('World');
+                            setCountryFilterDropdownOpen(false);
+                          }}
+                          className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                            countryFilter === 'World'
+                              ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                              : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                          }`}
+                        >
+                          {renderFlagIcon('World', "w-3.5 h-2.5 flex-shrink-0")}
+                          <span>World</span>
+                        </button>
+
+                        {/* User's own country if available */}
+                        {currentUser?.country && currentUser.country !== 'World' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleCountryFilterClick(currentUser.country);
+                              setCountryFilterDropdownOpen(false);
+                            }}
+                            className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                              countryFilter === currentUser.country
+                                ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                            }`}
+                          >
+                            {renderFlagIcon(currentUser.country, "w-3.5 h-2.5 flex-shrink-0")}
+                            <span className="truncate">{currentUser.country}</span>
+                          </button>
+                        )}
+
+                        {/* Other countries */}
+                        {COUNTRIES.filter(c => c.name !== currentUser?.country).map(c => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              handleCountryFilterClick(c.name);
+                              setCountryFilterDropdownOpen(false);
+                            }}
+                            className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-lg text-left text-[10px] font-bold transition ${
+                              countryFilter === c.name
+                                ? 'bg-brand-primary/20 text-white border border-brand-primary/30'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                            }`}
+                          >
+                            {renderFlagIcon(c.name, "w-3.5 h-2.5 flex-shrink-0")}
+                            <span className="truncate">{c.name}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
                   )}
-                  {/* List all other countries */}
-                  {COUNTRIES.filter(c => c.name !== currentUser?.country).map(c => (
-                    <option key={c.name} value={c.name}>
-                      {c.flag} {c.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-500">
-                  <ChevronDown className="w-3 h-3" />
-                </div>
+                </AnimatePresence>
               </div>
             </div>
           </div>
