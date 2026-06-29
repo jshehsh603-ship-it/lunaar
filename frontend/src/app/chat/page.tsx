@@ -2114,36 +2114,13 @@ export default function ChatPage() {
                 } ${remoteFilter === 'blur' && !remoteFace ? 'filter blur-2xl scale-105' : ''}`}
               />
 
-              {/* STOPPED/IDLE STATE: LunaarFun TV Logo & Online counter (Ome TV style) */}
+              {/* STOPPED/IDLE STATE: Glowing Logo & Online counter */}
               {!isMatching && !isMatched && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 p-6 select-none pointer-events-none">
                   <div className="flex flex-col items-center gap-6 max-w-sm w-full">
-                    {/* TV Body */}
-                    <div className="relative w-44 h-36 bg-[#ff532d] rounded-[36px] p-4 flex items-center shadow-[0_10px_30px_rgba(255,83,45,0.25)] border border-[#ff6947]/30">
-                      {/* Antenna 1 */}
-                      <div className="absolute bottom-full left-[35%] w-1.5 h-10 bg-[#e04522] origin-bottom -rotate-30 rounded-full"></div>
-                      <div className="absolute -top-10 left-[26%] w-3 h-3 bg-[#ff532d] rounded-full"></div>
-                      
-                      {/* Antenna 2 */}
-                      <div className="absolute bottom-full right-[35%] w-1.5 h-10 bg-[#e04522] origin-bottom rotate-30 rounded-full"></div>
-                      <div className="absolute -top-10 right-[26%] w-3 h-3 bg-[#ff532d] rounded-full"></div>
-
-                      {/* TV Screen */}
-                      <div className="w-[78%] h-full bg-white rounded-[24px] flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
-                        <span className="font-extrabold text-2xl tracking-tight text-[#ff532d] leading-none font-sans">Lunaar</span>
-                        <span className="font-black text-xl tracking-wider text-[#10b981] mt-0.5 leading-none font-sans">FUN</span>
-                      </div>
-
-                      {/* Right Control Knobs Panel */}
-                      <div className="w-[22%] h-full flex flex-col items-center justify-center gap-3.5 pl-2.5">
-                        <div className="w-2.5 h-2.5 bg-white rounded-full shadow-md"></div>
-                        <div className="w-2.5 h-2.5 bg-white rounded-full shadow-md"></div>
-                        <div className="w-3.5 h-1.5 bg-[#e04522] rounded-sm shadow-md mt-1"></div>
-                      </div>
-
-                      {/* TV Legs */}
-                      <div className="absolute -bottom-2.5 left-[20%] w-3.5 h-3 bg-[#e04522] rounded-b-md transform -rotate-12"></div>
-                      <div className="absolute -bottom-2.5 right-[20%] w-3.5 h-3 bg-[#e04522] rounded-b-md transform rotate-12"></div>
+                    {/* Glowing Logo */}
+                    <div className="font-extrabold text-4xl tracking-[0.2em] text-white premium-glowing-text select-none">
+                      LUN<span className="text-brand-primary font-sans">AAR</span>
                     </div>
 
                     {/* Online Stats indicator */}
@@ -2633,10 +2610,13 @@ export default function ChatPage() {
                 {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL */}
                 {isMobile && mobileActiveTab === 'chat' && (
                   <div className={`absolute inset-0 z-30 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
-                    mobileControlsVisible ? 'pb-20' : 'pb-3.5'
+                    mobileControlsVisible ? 'pb-36' : 'pb-8'
                   }`}>
                     {/* Chat messages list */}
-                    <div className="flex-grow flex flex-col justify-end overflow-y-auto mb-2 pr-1 custom-scrollbar text-right max-h-[calc(100%-88px)] select-text">
+                    <div 
+                      onClick={handleScreenTap}
+                      className="flex-grow flex flex-col justify-end overflow-y-auto mb-2 pr-1 custom-scrollbar text-right max-h-[calc(100%-88px)] select-text cursor-pointer"
+                    >
                       <div className="flex flex-col gap-1 justify-end select-text">
                         {messages.map((msg, idx) => {
                           const isMe = msg.senderId === currentUser?.id;
@@ -2664,7 +2644,9 @@ export default function ChatPage() {
                       onSubmit={(e) => {
                         handleSendMessage(e);
                       }}
-                      className="flex items-center gap-2 w-full relative"
+                      className={`flex items-center gap-2 w-full relative transition-all duration-300 ${
+                        mobileControlsVisible ? 'opacity-0 scale-95 pointer-events-none h-0 overflow-hidden mt-0' : 'opacity-100 scale-100'
+                      }`}
                     >
                       <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg">
                         <input
@@ -2912,7 +2894,7 @@ export default function ChatPage() {
                 <div 
                   onClick={(e) => e.stopPropagation()}
                   className={`${
-                    isMobile && mobileActiveTab === 'chat' ? 'hidden' : 'flex'
+                    isMobile && mobileActiveTab === 'chat' && !mobileControlsVisible ? 'hidden' : 'flex'
                   } items-center gap-3 w-full max-w-md mx-auto relative`}
                 >
                   <button
