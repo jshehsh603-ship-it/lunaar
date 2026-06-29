@@ -1785,13 +1785,9 @@ export default function ChatPage() {
           {/* Mobile Profile Circle */}
           <button 
             onClick={(e) => { e.stopPropagation(); audioSynth.playClick(); router.push('/'); }}
-            className="flex lg:hidden w-10 h-10 rounded-full border-2 border-red-500/80 items-center justify-center overflow-hidden bg-slate-900 focus:outline-none transition active:scale-95 shadow-md pointer-events-auto"
+            className="flex lg:hidden w-10 h-10 rounded-full border border-brand-primary/30 items-center justify-center bg-brand-primary/5 focus:outline-none transition active:scale-95 shadow-md pointer-events-auto"
           >
-            {currentUser?.avatarUrl ? (
-              <img src={currentUser.avatarUrl} alt="Me" className="w-full h-full object-cover" />
-            ) : (
-              <User className="w-5 h-5 text-red-500" />
-            )}
+            <User className="w-5 h-5 text-brand-primary" strokeWidth={1.5} />
           </button>
         </div>
 

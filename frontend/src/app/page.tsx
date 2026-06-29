@@ -7,7 +7,7 @@ import confetti from 'canvas-confetti';
 import { 
   Video, Globe, Shield, Sparkles, Heart, Users, MessageSquare, 
   Search, Check, Zap, HelpCircle, Lock, Menu, X, ArrowRight, Star, RefreshCw,
-  ChevronDown
+  ChevronDown, User
 } from 'lucide-react';
 import audioSynth from '../components/AudioEffects';
 
@@ -511,8 +511,8 @@ export default function LandingPage() {
                   Sign Out
                 </button>
                 <a href="/profile" className="premium-avatar-ring block cursor-pointer">
-                  <div className="w-9 h-9 rounded-[10px] overflow-hidden bg-slate-900 flex items-center justify-center">
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover transition-transform duration-300 hover:scale-110" />
+                  <div className="w-9 h-9 rounded-[10px] border border-brand-primary/30 bg-brand-primary/5 flex items-center justify-center">
+                    <User className="w-5 h-5 text-brand-primary" strokeWidth={1.5} />
                   </div>
                 </a>
               </div>
@@ -553,8 +553,8 @@ export default function LandingPage() {
                 {isLoggedIn ? (
                   <div className="flex items-center justify-between py-2 bg-white/5 rounded-xl px-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg overflow-hidden">
-                        <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      <div className="w-8 h-8 rounded-lg border border-brand-primary/30 bg-brand-primary/5 flex items-center justify-center">
+                        <User className="w-4.5 h-4.5 text-brand-primary" strokeWidth={1.5} />
                       </div>
                       <span className="text-sm font-semibold text-white">{username}</span>
                     </div>
