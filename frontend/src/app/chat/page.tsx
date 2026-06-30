@@ -320,6 +320,56 @@ export default function ChatPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // Lock mobile body scrolling and overscroll behavior to 100% visible frame
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const html = document.documentElement;
+    const body = document.body;
+    
+    const originalHtmlStyles = {
+      overflow: html.style.overflow,
+      position: html.style.position,
+      width: html.style.width,
+      height: html.style.height,
+      overscrollBehavior: html.style.overscrollBehavior
+    };
+    
+    const originalBodyStyles = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      width: body.style.width,
+      height: body.style.height,
+      overscrollBehavior: body.style.overscrollBehavior
+    };
+    
+    html.style.overflow = 'hidden';
+    html.style.position = 'fixed';
+    html.style.width = '100%';
+    html.style.height = '100%';
+    html.style.overscrollBehavior = 'none';
+    
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.width = '100%';
+    body.style.height = '100%';
+    body.style.overscrollBehavior = 'none';
+    
+    return () => {
+      html.style.overflow = originalHtmlStyles.overflow;
+      html.style.position = originalHtmlStyles.position;
+      html.style.width = originalHtmlStyles.width;
+      html.style.height = originalHtmlStyles.height;
+      html.style.overscrollBehavior = originalHtmlStyles.overscrollBehavior;
+      
+      body.style.overflow = originalBodyStyles.overflow;
+      body.style.position = originalBodyStyles.position;
+      body.style.width = originalBodyStyles.width;
+      body.style.height = originalBodyStyles.height;
+      body.style.overscrollBehavior = originalBodyStyles.overscrollBehavior;
+    };
+  }, []);
+
   // 1. Initialize media streams and Socket connection
   useEffect(() => {
     if (typeof window === 'undefined') return;
