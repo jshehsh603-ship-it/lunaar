@@ -324,49 +324,22 @@ export default function ChatPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const html = document.documentElement;
-    const body = document.body;
-    
-    const originalHtmlStyles = {
-      overflow: html.style.overflow,
-      position: html.style.position,
-      width: html.style.width,
-      height: html.style.height,
-      overscrollBehavior: html.style.overscrollBehavior
+    // Prevent iOS Safari bounce/rubber-banding by blocking touchmove on non-scrollable areas
+    const preventDefault = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // Allow scrolling inside scrollable lists
+      if (target.closest('.overflow-y-auto') || target.closest('.custom-scrollbar')) {
+        return;
+      }
+      if (e.cancelable) {
+        e.preventDefault();
+      }
     };
     
-    const originalBodyStyles = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      width: body.style.width,
-      height: body.style.height,
-      overscrollBehavior: body.style.overscrollBehavior
-    };
-    
-    html.style.overflow = 'hidden';
-    html.style.position = 'fixed';
-    html.style.width = '100%';
-    html.style.height = '100%';
-    html.style.overscrollBehavior = 'none';
-    
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.width = '100%';
-    body.style.height = '100%';
-    body.style.overscrollBehavior = 'none';
+    document.addEventListener('touchmove', preventDefault, { passive: false });
     
     return () => {
-      html.style.overflow = originalHtmlStyles.overflow;
-      html.style.position = originalHtmlStyles.position;
-      html.style.width = originalHtmlStyles.width;
-      html.style.height = originalHtmlStyles.height;
-      html.style.overscrollBehavior = originalHtmlStyles.overscrollBehavior;
-      
-      body.style.overflow = originalBodyStyles.overflow;
-      body.style.position = originalBodyStyles.position;
-      body.style.width = originalBodyStyles.width;
-      body.style.height = originalBodyStyles.height;
-      body.style.overscrollBehavior = originalBodyStyles.overscrollBehavior;
+      document.removeEventListener('touchmove', preventDefault);
     };
   }, []);
 
@@ -2795,122 +2768,122 @@ export default function ChatPage() {
                      <span className="text-[10px] text-slate-500 font-bold text-center px-1">Camera Off</span>
                    </div>
                  )}
-
-                {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL */}
-                {isMobile && mobileActiveTab === 'chat' && (
-                  <div className={`absolute inset-0 z-30 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
-                    mobileControlsVisible ? 'pb-32' : 'pb-4'
-                  }`}>
-                    {/* Chat messages list */}
-                    <div 
-                      onClick={handleScreenTap}
-                      className="flex-grow flex flex-col justify-end overflow-y-auto mb-2 pr-1 custom-scrollbar text-right max-h-[calc(100%-88px)] select-text cursor-pointer"
-                    >
-                      <div className="flex flex-col gap-1 justify-end select-text">
-                        {messages.map((msg, idx) => {
-                          const isMe = msg.senderId === currentUser?.id;
-                          return (
-                            <div
-                              key={msg.id || idx}
-                              className="text-white text-sm font-bold tracking-wide drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] my-0.5 select-text"
-                            >
-                              <span>{msg.content}</span>
-                              <span className="text-slate-400 font-black ml-1.5">{isMe ? ' -' : ' <'}</span>
-                            </div>
-                          );
-                        })}
-                        {partnerTyping && (
-                          <div className="text-slate-300 text-[11px] font-extrabold italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-pulse">
-                            Partner is typing...
-                          </div>
-                        )}
-                        <div ref={mobileChatBottomRef} />
-                      </div>
-                    </div>
-
-                    {/* Input Area */}
-                    <form
-                      onSubmit={(e) => {
-                        handleSendMessage(e);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-2 w-full relative select-text"
-                    >
-                      <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg select-text">
-                        <input
-                          type="text"
-                          value={messageInput}
-                          onChange={handleTypingInput}
-                          disabled={!isMatched}
-                          placeholder={isMatched ? "Type your message here ..." : "Waiting for match ..."}
-                          className="w-full bg-transparent text-white text-xs font-semibold placeholder-slate-400 outline-none pr-10 focus:ring-0 disabled:opacity-50 select-text"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            audioSynth.playClick();
-                            setShowEmojiPicker(!showEmojiPicker);
-                          }}
-                          className="absolute right-3.5 text-slate-400 hover:text-white transition flex items-center justify-center"
-                        >
-                          <Smile className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={!messageInput.trim()}
-                        className="w-[42px] h-[42px] rounded-xl bg-[#e52424] hover:bg-red-500 text-white flex items-center justify-center transition flex-shrink-0 disabled:opacity-40 active:scale-95 shadow-[0_0_15px_rgba(229,36,36,0.4)]"
-                      >
-                        <ChevronRight className="w-5 h-5 text-white stroke-[3px]" />
-                      </button>
-
-                      {/* Mobile Emoji Picker Popover */}
-                      <AnimatePresence>
-                        {showEmojiPicker && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 10 }}
-                              className="absolute bottom-full mb-3 right-0 left-0 bg-slate-950/95 border border-white/10 rounded-2xl p-3 shadow-2xl z-50 flex flex-col gap-2.5 backdrop-blur-md"
-                            >
-                              <div className="flex items-center justify-between border-b border-white/5 pb-1">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Emojis</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    audioSynth.playClick();
-                                    setShowEmojiPicker(false);
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-white transition"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-7 gap-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
-                                {EMOJI_LIST.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                      handleQuickEmoji(emoji);
-                                    }}
-                                    className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-base active:scale-90 transition"
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </form>
-                  </div>
-                )}
                </div>
              </motion.div>
+
+             {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL (Moved here as sibling to cover entire viewport) */}
+             {isMobile && mobileActiveTab === 'chat' && (
+               <div className={`absolute inset-0 z-40 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
+                 mobileControlsVisible ? 'pb-32' : 'pb-4'
+               }`}>
+                 {/* Chat messages list */}
+                 <div 
+                   onClick={handleScreenTap}
+                   className="flex-grow flex flex-col justify-end overflow-y-auto mb-2 pr-1 custom-scrollbar text-right max-h-[calc(100%-88px)] select-text cursor-pointer"
+                 >
+                   <div className="flex flex-col gap-1 justify-end select-text">
+                     {messages.map((msg, idx) => {
+                       const isMe = msg.senderId === currentUser?.id;
+                       return (
+                         <div
+                           key={msg.id || idx}
+                           className="text-white text-sm font-bold tracking-wide drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] my-0.5 select-text"
+                         >
+                           <span>{msg.content}</span>
+                           <span className="text-slate-400 font-black ml-1.5">{isMe ? ' -' : ' <'}</span>
+                         </div>
+                       );
+                     })}
+                     {partnerTyping && (
+                       <div className="text-slate-300 text-[11px] font-extrabold italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-pulse">
+                         Partner is typing...
+                       </div>
+                     )}
+                     <div ref={mobileChatBottomRef} />
+                   </div>
+                 </div>
+
+                 {/* Input Area */}
+                 <form
+                   onSubmit={(e) => {
+                     handleSendMessage(e);
+                   }}
+                   onClick={(e) => e.stopPropagation()}
+                   className="flex items-center gap-2 w-full relative select-text"
+                 >
+                   <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg select-text">
+                     <input
+                       type="text"
+                       value={messageInput}
+                       onChange={handleTypingInput}
+                       disabled={!isMatched}
+                       placeholder={isMatched ? "Type your message here ..." : "Waiting for match ..."}
+                       className="w-full bg-transparent text-white text-xs font-semibold placeholder-slate-400 outline-none pr-10 focus:ring-0 disabled:opacity-50 select-text"
+                     />
+                     <button
+                       type="button"
+                       onClick={() => {
+                         audioSynth.playClick();
+                         setShowEmojiPicker(!showEmojiPicker);
+                       }}
+                       className="absolute right-3.5 text-slate-400 hover:text-white transition flex items-center justify-center"
+                     >
+                       <Smile className="w-5 h-5" />
+                     </button>
+                   </div>
+                   <button
+                     type="submit"
+                     disabled={!messageInput.trim()}
+                     className="w-[42px] h-[42px] rounded-xl bg-[#e52424] hover:bg-red-500 text-white flex items-center justify-center transition flex-shrink-0 disabled:opacity-40 active:scale-95 shadow-[0_0_15px_rgba(229,36,36,0.4)]"
+                   >
+                     <ChevronRight className="w-5 h-5 text-white stroke-[3px]" />
+                   </button>
+
+                   {/* Mobile Emoji Picker Popover */}
+                   <AnimatePresence>
+                     {showEmojiPicker && (
+                       <>
+                         <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                         <motion.div
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: 10 }}
+                           className="absolute bottom-full mb-3 right-0 left-0 bg-slate-950/95 border border-white/10 rounded-2xl p-3 shadow-2xl z-50 flex flex-col gap-2.5 backdrop-blur-md"
+                         >
+                           <div className="flex items-center justify-between border-b border-white/5 pb-1">
+                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Emojis</span>
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 audioSynth.playClick();
+                                 setShowEmojiPicker(false);
+                               }}
+                               className="p-1 text-slate-400 hover:text-white transition"
+                             >
+                               <X className="w-3.5 h-3.5" />
+                             </button>
+                           </div>
+                           <div className="grid grid-cols-7 gap-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                             {EMOJI_LIST.map((emoji) => (
+                               <button
+                                 key={emoji}
+                                 type="button"
+                                 onClick={() => {
+                                   handleQuickEmoji(emoji);
+                                 }}
+                                 className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-base active:scale-90 transition"
+                               >
+                                 {emoji}
+                               </button>
+                             ))}
+                           </div>
+                         </motion.div>
+                       </>
+                     )}
+                   </AnimatePresence>
+                 </form>
+               </div>
+             )}
 
            </div>
 
