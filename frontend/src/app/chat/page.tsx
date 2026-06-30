@@ -2679,8 +2679,10 @@ export default function ChatPage() {
                 )}
                 
                 {/* Local Feed Overlay controls */}
-                {!(isMobile && mobileActiveTab === 'chat') && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent flex items-end justify-between p-2 z-20">
+                {(!isMobile || mobileActiveTab === 'chat') && (
+                  <div className={`absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent flex justify-between p-2 z-20 ${
+                    isMobile && mobileActiveTab === 'chat' ? 'items-start bg-none' : 'items-end'
+                  }`}>
                     <span className="text-[10px] text-white font-bold">Me</span>
                     <div className="flex gap-1">
                       <button 
@@ -2717,7 +2719,7 @@ export default function ChatPage() {
                 {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL */}
                 {isMobile && mobileActiveTab === 'chat' && (
                   <div className={`absolute inset-0 z-30 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
-                    mobileControlsVisible ? 'pb-28' : 'pb-4'
+                    mobileControlsVisible ? 'pb-32' : 'pb-4'
                   }`}>
                     {/* Chat messages list */}
                     <div 
@@ -2752,9 +2754,7 @@ export default function ChatPage() {
                         handleSendMessage(e);
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className={`flex items-center gap-2 w-full relative transition-all duration-300 ${
-                        mobileControlsVisible ? 'opacity-0 scale-95 pointer-events-none h-0 overflow-hidden mt-0' : 'opacity-100 scale-100 select-text'
-                      }`}
+                      className="flex items-center gap-2 w-full relative select-text"
                     >
                       <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg select-text">
                         <input
