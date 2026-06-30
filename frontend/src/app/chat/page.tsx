@@ -67,6 +67,7 @@ export default function ChatPage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [skipCount, setSkipCount] = useState(0);
   const [showPremiumPromo, setShowPremiumPromo] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
@@ -293,6 +294,31 @@ export default function ChatPage() {
   useEffect(() => {
     partnerProfileRef.current = partnerProfile;
   }, [partnerProfile]);
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'UPGRADE_SUCCESS') {
+        const updatedUser = e.data.user;
+        if (updatedUser) {
+          localStorage.setItem('lunaar_user', JSON.stringify(updatedUser));
+          setCurrentUser(updatedUser);
+          setShowUpgradeModal(false);
+          setShowPremiumModal(false);
+          setShowPremiumPromo(false);
+          import('canvas-confetti').then((module) => {
+            const confettiFn = module.default || module;
+            confettiFn({
+              particleCount: 150,
+              spread: 80,
+              origin: { y: 0.6 }
+            });
+          });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // 1. Initialize media streams and Socket connection
   useEffect(() => {
@@ -1445,7 +1471,7 @@ export default function ChatPage() {
   const handleSimulateUpgrade = () => {
     audioSynth.playClick();
     setShowPremiumModal(false);
-    window.open('/upgrade', '_blank');
+    setShowUpgradeModal(true);
   };
 
   const handleStartClick = () => {
@@ -2109,9 +2135,11 @@ export default function ChatPage() {
             ) : (
               <a 
                 href="/upgrade"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => audioSynth.playClick()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  audioSynth.playClick();
+                  setShowUpgradeModal(true);
+                }}
                 className="hidden md:flex px-5 py-2.5 rounded-xl text-sm font-bold premium-vip-button items-center gap-2"
               >
                 <Star className="w-4 h-4 text-white fill-white animate-pulse" />
@@ -2174,7 +2202,7 @@ export default function ChatPage() {
                       type="button"
                       onClick={() => {
                         audioSynth.playClick();
-                        window.open('/upgrade', '_blank');
+                        setShowUpgradeModal(true);
                       }}
                       className="absolute bottom-4 right-4 px-4 py-2.5 rounded-xl bg-[#e52424] hover:bg-red-500 text-white font-extrabold text-[11px] lg:text-xs tracking-wider uppercase transition active:scale-95 shadow-[0_4px_15px_rgba(229,36,36,0.45)] pointer-events-auto cursor-pointer"
                     >
@@ -2476,7 +2504,7 @@ export default function ChatPage() {
                           type="button"
                           onClick={() => {
                             audioSynth.playClick();
-                            window.open('/upgrade', '_blank');
+                            setShowUpgradeModal(true);
                           }}
                           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-600/35 via-red-600/35 to-amber-500/30 border border-rose-500/50 text-white font-extrabold text-[13px] tracking-widest transition active:scale-95 shadow-[0_0_25px_rgba(239,68,68,0.3)] backdrop-blur-md flex items-center justify-center gap-2 hover:from-rose-600/45 hover:to-amber-500/40 hover:border-rose-500/75"
                         >
@@ -3659,6 +3687,43 @@ export default function ChatPage() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: EMBEDDED VIP UPGRADE CHECKOUT POPUP */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 md:p-6 z-50 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-[500px] h-[85vh] max-h-[750px] bg-[#0c0410] border border-white/10 rounded-[32px] overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  audioSynth.playClick();
+                  setShowUpgradeModal(false);
+                }}
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/40 hover:bg-black/60 text-slate-450 hover:text-white transition z-50 border border-white/5"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Embedded Checkout Page Frame */}
+              <iframe
+                src="/upgrade?embed=true"
+                className="w-full h-full border-none"
+                title="Secure Checkout"
+              />
             </motion.div>
           </motion.div>
         )}

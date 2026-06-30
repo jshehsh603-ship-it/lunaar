@@ -145,6 +145,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
 function UpgradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isEmbedded = searchParams.get('embed') === 'true';
 
   // Profile data
   const [profile, setProfile] = useState<any>(null);
@@ -326,6 +327,10 @@ function UpgradeContent() {
         setIsPremium(true);
         localStorage.setItem('lunaar_user', JSON.stringify(updated));
         
+        if (typeof window !== 'undefined' && window.parent) {
+          window.parent.postMessage({ type: 'UPGRADE_SUCCESS', user: updated }, '*');
+        }
+        
         if (profile.email) {
           const accountsStr = localStorage.getItem('lunaar_accounts');
           if (accountsStr) {
@@ -389,31 +394,33 @@ function UpgradeContent() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-rose-500/10 blur-[120px] pointer-events-none"></div>
 
       {/* HEADER NAVBAR */}
-      <header className="relative z-20 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-md premium-header">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleBackClick}
-              className="py-1.5 px-3.5 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5 text-xs font-bold"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-            
-            <div className="h-4 w-px bg-white/10 mx-1"></div>
-            
-            <div className="flex items-center gap-2">
-              <a href="/" className="font-extrabold text-lg tracking-[0.2em] text-white premium-glowing-text flex items-center select-none animate-pulse-slow">
-                LUN<span className="text-brand-primary font-sans">AAR</span>
-              </a>
-              <div className="flex flex-col text-[8px] uppercase font-extrabold text-slate-500 tracking-wider leading-none border-l border-white/10 pl-2">
-                <span>Secured</span>
-                <span className="mt-0.5">Checkout</span>
+      {!isEmbedded && (
+        <header className="relative z-20 w-full border-b border-white/5 bg-slate-950/80 backdrop-blur-md premium-header">
+          <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleBackClick}
+                className="py-1.5 px-3.5 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
+              </button>
+              
+              <div className="h-4 w-px bg-white/10 mx-1"></div>
+              
+              <div className="flex items-center gap-2">
+                <a href="/" className="font-extrabold text-lg tracking-[0.2em] text-white premium-glowing-text flex items-center select-none animate-pulse-slow">
+                  LUN<span className="text-brand-primary font-sans">AAR</span>
+                </a>
+                <div className="flex flex-col text-[8px] uppercase font-extrabold text-slate-500 tracking-wider leading-none border-l border-white/10 pl-2">
+                  <span>Secured</span>
+                  <span className="mt-0.5">Checkout</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* MAIN CONTAINER */}
       <main className="relative z-10 flex-grow flex items-center justify-center p-6 md:p-12 animate-fade-in">
@@ -432,12 +439,14 @@ function UpgradeContent() {
               </div>
               <h3 className="font-black text-2xl text-white tracking-tight">Choose Your VIP Pass</h3>
             </div>
-            <button
-              onClick={handleBackClick}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {!isEmbedded && (
+              <button
+                onClick={handleBackClick}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Plan Choice Options */}
