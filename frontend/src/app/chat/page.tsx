@@ -2577,10 +2577,10 @@ export default function ChatPage() {
               onDragEnd={handleDragEnd}
               animate={isMobile ? { x: 0, y: 0 } : controls}
               initial={{ x: 0, y: 0 }}
-              className={`flex flex-col group select-none overflow-hidden ${
+              className={`flex flex-col group overflow-hidden ${
                 isMobile 
-                  ? 'relative w-full h-1/2 border-t border-white/10 bg-slate-950/55 backdrop-blur-md' 
-                  : 'absolute bottom-4 left-4 z-20 w-40 md:w-60 rounded-xl border-2 border-white/15 bg-slate-950 shadow-2xl'
+                  ? 'relative w-full h-1/2 border-t border-white/10 bg-slate-950/55 backdrop-blur-md select-text' 
+                  : 'absolute bottom-4 left-4 z-20 w-40 md:w-60 rounded-xl border-2 border-white/15 bg-slate-950 shadow-2xl select-none'
               }`}
             >
               {/* Drag Handle Top Bar (Desktop only) */}
@@ -2613,9 +2613,9 @@ export default function ChatPage() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       transition={{ duration: 0.35, ease: 'easeOut' }}
-                      className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-transparent text-black/60 text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 pointer-events-none z-30 select-none text-center whitespace-nowrap"
+                      className="absolute top-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 bg-slate-950/60 backdrop-blur-md border border-white/10 text-white font-extrabold text-[9px] tracking-wider uppercase flex items-center gap-2 shadow-[0_4px_12px_rgba(0,0,0,0.35)] pointer-events-none z-40 select-none text-center whitespace-nowrap rounded-full"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-ping" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse shadow-[0_0_6px_#10b981]" />
                       <span>Tap screen to view options</span>
                     </motion.div>
                   )}
@@ -2717,7 +2717,7 @@ export default function ChatPage() {
                 {/* MOBILE ONLY: TRANSPARENT OVERLAY CHAT PANEL */}
                 {isMobile && mobileActiveTab === 'chat' && (
                   <div className={`absolute inset-0 z-30 flex flex-col justify-end p-3.5 bg-black/15 select-text pointer-events-auto transition-all duration-300 ${
-                    mobileControlsVisible ? 'pb-36' : 'pb-5'
+                    mobileControlsVisible ? 'pb-28' : 'pb-4'
                   }`}>
                     {/* Chat messages list */}
                     <div 
