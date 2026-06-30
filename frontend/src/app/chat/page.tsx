@@ -1819,7 +1819,7 @@ export default function ChatPage() {
 
   return (
     <div 
-      className="flex-grow flex flex-col bg-brand-darkBg h-screen overflow-hidden selection:bg-brand-primary selection:text-white relative select-none bg-cover bg-center bg-no-repeat"
+      className="flex-grow flex flex-col bg-brand-darkBg h-[100dvh] overflow-hidden selection:bg-brand-primary selection:text-white relative select-none bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: `linear-gradient(to bottom, rgba(15, 5, 20, 0.88), rgba(80, 10, 30, 0.65), rgba(15, 5, 20, 0.93)), url('/background.png')`
       }}
