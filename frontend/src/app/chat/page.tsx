@@ -842,8 +842,8 @@ export default function ChatPage() {
       const constraints: MediaStreamConstraints = {
         video: isMobile 
           ? (selectedVideoDeviceId 
-              ? { deviceId: { exact: selectedVideoDeviceId }, facingMode: 'user' } 
-              : { facingMode: 'user' })
+              ? { deviceId: { exact: selectedVideoDeviceId }, facingMode: 'user', aspectRatio: { ideal: 1.0 } } 
+              : { facingMode: 'user', aspectRatio: { ideal: 1.0 } })
           : (selectedVideoDeviceId 
               ? { deviceId: { exact: selectedVideoDeviceId }, width: 640, height: 480 } 
               : { width: 640, height: 480, facingMode: 'user' }),
@@ -914,14 +914,14 @@ export default function ChatPage() {
           : (selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true),
         video: type === 'video' 
           ? (isMobile 
-              ? { deviceId: { exact: deviceId }, facingMode: 'user' } 
+              ? { deviceId: { exact: deviceId }, facingMode: 'user', aspectRatio: { ideal: 1.0 } } 
               : { deviceId: { exact: deviceId }, width: 640, height: 480 })
           : (selectedVideoDeviceId 
               ? (isMobile 
-                  ? { deviceId: { exact: selectedVideoDeviceId }, facingMode: 'user' } 
+                  ? { deviceId: { exact: selectedVideoDeviceId }, facingMode: 'user', aspectRatio: { ideal: 1.0 } } 
                   : { deviceId: { exact: selectedVideoDeviceId }, width: 640, height: 480 })
               : (isMobile 
-                  ? { facingMode: 'user' } 
+                  ? { facingMode: 'user', aspectRatio: { ideal: 1.0 } } 
                   : { width: 640, height: 480, facingMode: 'user' }))
       };
 
