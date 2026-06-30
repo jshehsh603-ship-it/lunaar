@@ -65,6 +65,8 @@ export default function ChatPage() {
   const [countryFilter, setCountryFilter] = useState<string>('World');
   const [countryFilterDropdownOpen, setCountryFilterDropdownOpen] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [skipCount, setSkipCount] = useState(0);
+  const [showPremiumPromo, setShowPremiumPromo] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
@@ -1295,6 +1297,8 @@ export default function ChatPage() {
 
   const handleStopMatch = () => {
     audioSynth.playClick();
+    setShowPremiumPromo(false);
+    setSkipCount(0);
     if (loopbackMode) {
       setLoopbackMode(false);
       if (loopbackIntervalRef.current) {
@@ -1445,7 +1449,7 @@ export default function ChatPage() {
   };
 
   const handleStartClick = () => {
-    if (isMatching || isMatched) {
+    if (isMatching || isMatched || showPremiumPromo) {
       handleSkipNext();
     } else {
       handleStartMatch();
@@ -1522,16 +1526,54 @@ export default function ChatPage() {
     audioSynth.playSkip();
     closePeerConnection(); // Stop current peer connection and bot streams immediately!
 
+    if (showPremiumPromo) {
+      setShowPremiumPromo(false);
+      // Resume standard matching
+      setIsMatched(false);
+      setPartnerProfile(null);
+      setLocalFilter('none');
+      setRemoteFilter('none');
+      setLocalFace(null);
+      setRemoteFace(null);
+      prevLocalFaceRef.current = null;
+      prevRemoteFaceRef.current = null;
+      startMatchingProcess();
+      return;
+    }
+
+    // Read user from localStorage
+    const savedUserStr = localStorage.getItem('lunaar_user');
+    const userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
+    const isPremium = userObj.isPremium || false;
+
+    // Increment skip count
+    const nextSkipCount = skipCount + 1;
+    setSkipCount(nextSkipCount);
+
+    // Trigger premium promo every 5, 25, 45, 65, etc. skips for non-premium users
+    if (!isPremium && (nextSkipCount === 5 || (nextSkipCount > 5 && (nextSkipCount - 5) % 20 === 0))) {
+      setShowPremiumPromo(true);
+      setIsMatched(false);
+      setIsMatching(false);
+      setPartnerProfile(null);
+      setLocalFilter('none');
+      setRemoteFilter('none');
+      setLocalFace(null);
+      setRemoteFace(null);
+      prevLocalFaceRef.current = null;
+      prevRemoteFaceRef.current = null;
+      if (socketRef.current) {
+        socketRef.current.emit('stop_matching');
+      }
+      return;
+    }
+
     if (socketRef.current) {
-      // Read filters from localStorage
-      const savedUserStr = localStorage.getItem('lunaar_user');
-      const userObj = savedUserStr ? JSON.parse(savedUserStr) : {};
-      
       const filters = {
         gender: userObj.genderPreference || 'everyone',
         country: userObj.countryPreference || 'World',
         interests: userObj.interests || [],
-        isPremium: userObj.isPremium || false
+        isPremium: isPremium
       };
 
       if (loopbackMode) {
@@ -2114,8 +2156,42 @@ export default function ChatPage() {
                 } ${remoteFilter === 'blur' && !remoteFace ? 'filter blur-2xl scale-105' : ''}`}
               />
 
+              {/* PREMIUM PROMO OVERLAY (Ome TV / Flingster style advertisement) */}
+              {showPremiumPromo && (
+                <div className="absolute inset-0 z-30 flex flex-col bg-slate-950 select-none">
+                  {/* Promo Image Area */}
+                  <div className="relative w-full h-[65%] lg:h-[75%] flex-shrink-0 overflow-hidden">
+                    <img 
+                      src="/premium-promo.jpg" 
+                      alt="Premium Promotion" 
+                      className="w-full h-full object-cover"
+                    />
+                    
+                    {/* Floating Connect Button on Image (Bottom Right) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        audioSynth.playClick();
+                        router.push('/upgrade');
+                      }}
+                      className="absolute bottom-4 right-4 px-4 py-2.5 rounded-xl bg-[#e52424] hover:bg-red-500 text-white font-extrabold text-[11px] lg:text-xs tracking-wider uppercase transition active:scale-95 shadow-[0_4px_15px_rgba(229,36,36,0.45)] pointer-events-auto cursor-pointer"
+                    >
+                      Connect with Women
+                    </button>
+                  </div>
+
+                  {/* Promo Text Area */}
+                  <div className="flex-grow flex items-center justify-center p-4 bg-slate-950 border-t border-white/5 text-center">
+                    <p className="text-white text-xs lg:text-[14px] font-bold tracking-wide leading-relaxed font-sans max-w-md">
+                      <span className="text-[#ff9d80] block lg:inline mb-1 lg:mb-0 lg:mr-1 font-black">Looking for women?</span>
+                      Try gender filters to connect to more women.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* STOPPED/IDLE STATE: Glowing Logo & Online counter */}
-              {!isMatching && !isMatched && (
+              {!isMatching && !isMatched && !showPremiumPromo && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20 p-6 select-none pointer-events-none">
                   <div className="flex flex-col items-center gap-6 max-w-sm w-full">
                     {/* Glowing Logo */}
@@ -2914,7 +2990,7 @@ export default function ChatPage() {
                     <Play className={`w-4 h-4 lg:w-5 lg:h-5 fill-white text-white group-hover:rotate-12 transition duration-300 ${
                       isMatching ? 'opacity-85 scale-95' : ''
                     }`} />
-                    <span>{isMatching || isMatched ? 'Next' : 'Start'}</span>
+                    <span>{isMatching || isMatched || showPremiumPromo ? 'Next' : 'Start'}</span>
                   </button>
 
                   <button
