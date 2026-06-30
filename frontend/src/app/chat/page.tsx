@@ -1445,7 +1445,7 @@ export default function ChatPage() {
   const handleSimulateUpgrade = () => {
     audioSynth.playClick();
     setShowPremiumModal(false);
-    router.push('/upgrade');
+    window.open('/upgrade', '_blank');
   };
 
   const handleStartClick = () => {
@@ -2109,6 +2109,8 @@ export default function ChatPage() {
             ) : (
               <a 
                 href="/upgrade"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => audioSynth.playClick()}
                 className="hidden md:flex px-5 py-2.5 rounded-xl text-sm font-bold premium-vip-button items-center gap-2"
               >
@@ -2172,7 +2174,7 @@ export default function ChatPage() {
                       type="button"
                       onClick={() => {
                         audioSynth.playClick();
-                        router.push('/upgrade');
+                        window.open('/upgrade', '_blank');
                       }}
                       className="absolute bottom-4 right-4 px-4 py-2.5 rounded-xl bg-[#e52424] hover:bg-red-500 text-white font-extrabold text-[11px] lg:text-xs tracking-wider uppercase transition active:scale-95 shadow-[0_4px_15px_rgba(229,36,36,0.45)] pointer-events-auto cursor-pointer"
                     >
@@ -2474,7 +2476,7 @@ export default function ChatPage() {
                           type="button"
                           onClick={() => {
                             audioSynth.playClick();
-                            router.push('/upgrade');
+                            window.open('/upgrade', '_blank');
                           }}
                           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-600/35 via-red-600/35 to-amber-500/30 border border-rose-500/50 text-white font-extrabold text-[13px] tracking-widest transition active:scale-95 shadow-[0_0_25px_rgba(239,68,68,0.3)] backdrop-blur-md flex items-center justify-center gap-2 hover:from-rose-600/45 hover:to-amber-500/40 hover:border-rose-500/75"
                         >
