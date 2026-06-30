@@ -324,6 +324,15 @@ export default function ChatPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
+    const html = document.documentElement;
+    const body = document.body;
+    
+    const originalHtmlOverflow = html.style.overflow;
+    const originalBodyOverflow = body.style.overflow;
+    
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    
     // Prevent iOS Safari bounce/rubber-banding by blocking touchmove on non-scrollable areas
     const preventDefault = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
@@ -339,6 +348,8 @@ export default function ChatPage() {
     document.addEventListener('touchmove', preventDefault, { passive: false });
     
     return () => {
+      html.style.overflow = originalHtmlOverflow;
+      body.style.overflow = originalBodyOverflow;
       document.removeEventListener('touchmove', preventDefault);
     };
   }, []);
