@@ -2185,7 +2185,7 @@ export default function ChatPage() {
           <div 
             ref={parentWorkspaceRef} 
             onClick={handleScreenTap}
-            className={`w-full h-full relative flex flex-col lg:block ${
+            className={`w-full h-full max-h-full overflow-hidden relative flex flex-col lg:block ${
               isMobile ? 'rounded-none border-none bg-transparent' : 'bg-slate-950 rounded-2xl border border-white/10'
             } ${isMobile && isMatched ? 'cursor-pointer' : ''}`}
           >
