@@ -2362,7 +2362,7 @@ export default function ChatPage() {
             </div>
 
             {/* IDLE STATE INTEREST OVERLAY */}
-            {!isMatching && !isMatched && !cameraPermissionError && (
+            {!isMatching && !isMatched && !showPremiumPromo && !cameraPermissionError && (
               <>
                 {/* Desktop Inline Panel */}
                 {!isMobile ? (
