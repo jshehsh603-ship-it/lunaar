@@ -2659,7 +2659,9 @@ export default function ChatPage() {
                   autoPlay
                   muted
                   playsInline
-                  className={`w-full h-full object-cover transform -scale-x-100 transition-all ${
+                  className={`w-full h-full transform -scale-x-100 transition-all ${
+                    isMobile ? 'object-contain bg-slate-950/80' : 'object-cover'
+                  } ${
                     localFilter === 'blur' && !localFace ? 'filter blur-xl scale-105' : ''
                   }`}
                 />
@@ -3074,10 +3076,10 @@ export default function ChatPage() {
                     className={`flex-1 px-4 lg:px-8 h-[52px] lg:h-[68px] rounded-xl lg:rounded-2xl flex items-center justify-center gap-2.5 transition duration-300 relative overflow-hidden group ${
                       isMatching
                         ? (isMobile 
-                            ? 'bg-gradient-to-r from-emerald-600/40 to-teal-700/40 border border-emerald-600/60 text-emerald-250 font-extrabold text-sm shadow-[inset_0_4px_8px_rgba(0,0,0,0.45)] backdrop-blur-md scale-[0.98] translate-y-[1px]' 
+                            ? 'bg-gradient-to-r from-emerald-600/40 to-teal-700/40 border border-emerald-600/60 text-emerald-250 font-extrabold text-sm shadow-[inset_0_4px_8px_rgba(0,0,0,0.45)] backdrop-blur-md scale-[0.98] translate-y-[1px] active:scale-[0.93] active:brightness-75 transition-all duration-75' 
                             : 'bg-gradient-to-r from-emerald-650 to-teal-750 border-none text-emerald-100 font-extrabold text-sm lg:text-base shadow-[inset_0_4px_10px_rgba(0,0,0,0.5)] scale-[0.98] translate-y-[2.5px] opacity-90')
                         : (isMobile 
-                            ? 'bg-gradient-to-r from-emerald-500/30 to-teal-600/30 border border-emerald-500/50 text-white font-extrabold text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)] backdrop-blur-md hover:from-emerald-500/40 hover:to-teal-600/40' 
+                            ? 'bg-gradient-to-r from-emerald-500/30 to-teal-600/30 border border-emerald-500/50 text-white font-extrabold text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)] backdrop-blur-md hover:from-emerald-500/40 hover:to-teal-600/40 active:scale-[0.93] active:brightness-75 transition-all duration-75' 
                             : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-none text-white font-extrabold text-sm lg:text-base hover:shadow-[0_0_25px_rgba(16,185,129,0.35)]')
                     }`}
                     title="Start Match / Next Person"
@@ -3096,7 +3098,7 @@ export default function ChatPage() {
                       isMobile
                         ? !isMatching && !isMatched
                           ? 'bg-slate-950/20 border-white/5 text-slate-600 cursor-not-allowed backdrop-blur-md'
-                          : 'bg-gradient-to-r from-red-500/30 to-rose-600/20 border-red-500/50 text-red-400 hover:from-red-500/40 hover:to-rose-600/30 shadow-[0_0_20px_rgba(239,68,68,0.2)] backdrop-blur-md active:scale-95'
+                          : 'bg-gradient-to-r from-red-500/30 to-rose-600/20 border-red-500/50 text-red-400 hover:from-red-500/40 hover:to-rose-600/30 shadow-[0_0_20px_rgba(239,68,68,0.2)] backdrop-blur-md active:scale-[0.93] active:brightness-75 transition-all duration-75'
                         : !isMatching && !isMatched
                           ? 'bg-slate-950/40 border-white/5 text-slate-600 cursor-not-allowed'
                           : 'bg-gradient-to-r from-red-500/20 to-rose-600/10 border-red-500/40 hover:from-red-500/30 hover:to-rose-600/20 text-red-400 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] active:scale-95'
