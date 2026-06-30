@@ -2751,18 +2751,19 @@ export default function ChatPage() {
                       onSubmit={(e) => {
                         handleSendMessage(e);
                       }}
+                      onClick={(e) => e.stopPropagation()}
                       className={`flex items-center gap-2 w-full relative transition-all duration-300 ${
-                        mobileControlsVisible ? 'opacity-0 scale-95 pointer-events-none h-0 overflow-hidden mt-0' : 'opacity-100 scale-100'
+                        mobileControlsVisible ? 'opacity-0 scale-95 pointer-events-none h-0 overflow-hidden mt-0' : 'opacity-100 scale-100 select-text'
                       }`}
                     >
-                      <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg">
+                      <div className="flex-grow relative flex items-center bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-lg select-text">
                         <input
                           type="text"
                           value={messageInput}
                           onChange={handleTypingInput}
                           disabled={!isMatched}
                           placeholder={isMatched ? "Type your message here ..." : "Waiting for match ..."}
-                          className="w-full bg-transparent text-white text-xs font-semibold placeholder-slate-400 outline-none pr-10 focus:ring-0 disabled:opacity-50"
+                          className="w-full bg-transparent text-white text-xs font-semibold placeholder-slate-400 outline-none pr-10 focus:ring-0 disabled:opacity-50 select-text"
                         />
                         <button
                           type="button"
