@@ -2683,27 +2683,57 @@ export default function ChatPage() {
                   <div className={`absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent flex justify-between p-2 z-20 ${
                     isMobile && mobileActiveTab === 'chat' ? 'items-start bg-none' : 'items-end'
                   }`}>
-                    <span className="text-[10px] text-white font-bold">Me</span>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleMic();
-                        }}
-                        className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
-                      >
-                        {micEnabled ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5 text-brand-primary" />}
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleCamera();
-                        }}
-                        className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
-                      >
-                        {cameraEnabled ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5 text-brand-primary" />}
-                      </button>
-                    </div>
+                    {isMobile && mobileActiveTab === 'chat' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-white font-bold">Me</span>
+                        {!mobileControlsVisible && (
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleMic();
+                              }}
+                              className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
+                            >
+                              {micEnabled ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3 text-brand-primary" />}
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleCamera();
+                              }}
+                              className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
+                            >
+                              {cameraEnabled ? <Video className="w-3 h-3" /> : <VideoOff className="w-3 h-3 text-brand-primary" />}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-[10px] text-white font-bold">Me</span>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleMic();
+                            }}
+                            className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
+                          >
+                            {micEnabled ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5 text-brand-primary" />}
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleCamera();
+                            }}
+                            className="p-1 rounded bg-slate-900/80 text-white hover:bg-slate-800"
+                          >
+                            {cameraEnabled ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5 text-brand-primary" />}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 {/* MUTE / VIDEO FEED OVERLAY FOR LOCAL */}
