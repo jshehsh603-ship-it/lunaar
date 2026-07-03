@@ -611,8 +611,35 @@ function UpgradeContent() {
                   )}
                 </div>
 
-                {/* Credit Card Input Form */}
-                <div className="flex flex-col gap-3.5 mt-2">
+                {/* Payment Method Selector */}
+                <div className="flex border border-slate-200 rounded-xl p-1 bg-slate-50 gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => { audioSynth.playClick(); setPaymentMethod('card'); }}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+                      paymentMethod === 'card'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Pay with Card</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { audioSynth.playClick(); setPaymentMethod('paypal'); }}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+                      paymentMethod === 'paypal'
+                        ? 'bg-[#FFB200] text-slate-950 shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <span className="font-sans italic font-black text-blue-900">Pay<span className="text-blue-600">Pal</span></span>
+                  </button>
+                </div>
+
+                {paymentMethod === 'card' && (
+                  <div className="flex flex-col gap-3.5 mt-2">
                   {/* Card Information */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[13px] font-bold text-slate-700">Card Information</label>
@@ -767,6 +794,55 @@ function UpgradeContent() {
                       <span>Confirm</span>
                     )}
                   </button>
+                </div>
+              )}
+
+              {paymentMethod === 'paypal' && (
+                <div className="flex flex-col gap-3.5 mt-4">
+                  <PayPalButton
+                    plan={selectedPlan}
+                    userId={profile?.id}
+                    onSuccess={(updatedUser) => {
+                      const updated = {
+                        ...profile,
+                        isPremium: true
+                      };
+                      setProfile(updated);
+                      setIsPremium(true);
+                      localStorage.setItem('lunaar_user', JSON.stringify(updated));
+                      
+                      if (typeof window !== 'undefined' && window.parent) {
+                        window.parent.postMessage({ type: 'UPGRADE_SUCCESS', user: updated }, '*');
+                      }
+                      
+                      if (profile?.email) {
+                        const accountsStr = localStorage.getItem('lunaar_accounts');
+                        if (accountsStr) {
+                          const accounts = JSON.parse(accountsStr);
+                          if (accounts[profile.email]) {
+                            accounts[profile.email].isPremium = true;
+                            localStorage.setItem('lunaar_accounts', JSON.stringify(accounts));
+                          }
+                        }
+                      }
+
+                      confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 },
+                        colors: ['#FFD700', '#FFA500', '#FF3B3B']
+                      });
+                      
+                      alert('Payment confirmed! Your Lunaar VIP Pass is now active.');
+                    }}
+                    onError={(err) => {
+                      alert(err);
+                    }}
+                    isProcessing={isProcessing}
+                    setIsProcessing={setIsProcessing}
+                  />
+                </div>
+              )}
  
                   {/* Terms disclaimer */}
                   <p className="text-[11px] text-slate-450 text-slate-500 leading-normal text-center mt-1 font-medium">
@@ -791,7 +867,6 @@ function UpgradeContent() {
                       <span>SSL Encrypted</span>
                     </div>
                   </div>
-                </div>
               </motion.div>
             </motion.div>
           )}
