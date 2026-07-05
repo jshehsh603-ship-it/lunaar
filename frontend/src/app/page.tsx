@@ -1606,6 +1606,14 @@ export default function LandingPage() {
                   </p>
                 </div>
 
+                {/* Bold Red Warning Box */}
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-955 flex flex-col gap-1 text-left shadow-sm mx-2">
+                  <span className="font-extrabold text-[10px] uppercase tracking-wider text-red-700">⚠️ IMPORTANT</span>
+                  <p className="font-bold text-xs leading-normal">
+                    Gmail and other mail providers often put this email in your <span className="underline decoration-wavy decoration-red-500 font-black text-red-650">Spam or Junk folder</span>. Please check there first!
+                  </p>
+                </div>
+
                 {/* Go to Gmail.com Button */}
                 <a
                   href="https://mail.google.com"
@@ -1626,11 +1634,9 @@ export default function LandingPage() {
               <div className="bg-[#F0F4F8] p-8 border-t border-slate-200 text-left flex flex-col gap-5">
                 <div className="text-xs text-slate-600 leading-relaxed flex flex-col gap-3">
                   <p>Depending on your email provider, it could take a few minutes until you receive the email.</p>
-                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-950 flex flex-col gap-1.5 shadow-sm">
-                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-red-700">⚠️ IMPORTANT</span>
-                    <p className="font-bold text-xs leading-normal">
-                      Gmail/Outlook often filters activation emails as spam. Please check your <span className="underline decoration-wavy decoration-red-500 font-black text-red-600">Spam or Junk folder</span> first!
-                    </p>
+                  <div>
+                    <span className="font-bold text-slate-800">Didn't receive an email?</span>
+                    <p className="mt-1">Please check your <span className="font-bold text-slate-800">spam folder</span> or enter a new email address below.</p>
                   </div>
                 </div>
 
