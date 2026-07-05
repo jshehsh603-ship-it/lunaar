@@ -1288,17 +1288,19 @@ export default function LandingPage() {
                   </button>
                 </form>
 
-                {/* Divider */}
+                {/* Divider temporarily removed
                 <div className="flex items-center gap-3 my-4">
                   <div className="h-px bg-white/10 flex-grow"></div>
                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Or Continue With</span>
                   <div className="h-px bg-white/10 flex-grow"></div>
                 </div>
+                */}
 
-                {/* Google OAuth button */}
+                {/* Google OAuth button temporarily removed
                 <div className="w-full flex justify-center mt-2 min-h-[40px]">
                   <div id="google-signin-btn"></div>
                 </div>
+                */}
 
               </div>
             </motion.div>
