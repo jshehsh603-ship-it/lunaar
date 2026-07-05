@@ -681,7 +681,7 @@ app.post('/api/register', async (req, res) => {
     return;
   }
 
-  const existingUser = db.getUserByEmail(email);
+  const existingUser = await db.getUserByEmail(email);
   if (existingUser) {
     res.status(400).json({ success: false, error: 'An account with this email already exists.' });
     return;
@@ -693,7 +693,7 @@ app.post('/api/register', async (req, res) => {
   const hasEmailProvider = !!(process.env.SMTP_USER || process.env.RESEND_API_KEY || process.env.GOOGLE_SCRIPT_URL || process.env.BREVO_API_KEY || (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY));
   const autoActivate = !hasEmailProvider; // Auto-activate only if NO email provider is configured
 
-  const userProfile = db.createOrUpdateUser({
+  const userProfile = await db.createOrUpdateUser({
     id: userId,
     username,
     email,
@@ -734,7 +734,7 @@ app.post('/api/resend-activation', async (req, res) => {
     return;
   }
 
-  const user = db.getUserByEmail(oldEmail);
+  const user = await db.getUserByEmail(oldEmail);
   if (!user) {
     res.status(404).json({ success: false, error: 'No account found with this email.' });
     return;
@@ -748,7 +748,7 @@ app.post('/api/resend-activation', async (req, res) => {
   const targetEmail = newEmail || oldEmail;
   
   if (newEmail && newEmail.toLowerCase() !== oldEmail.toLowerCase()) {
-    const existingUser = db.getUserByEmail(newEmail);
+    const existingUser = await db.getUserByEmail(newEmail);
     if (existingUser) {
       res.status(400).json({ success: false, error: 'This email is already taken by another account.' });
       return;
@@ -757,7 +757,7 @@ app.post('/api/resend-activation', async (req, res) => {
 
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  db.createOrUpdateUser({
+  await db.createOrUpdateUser({
     id: user.id,
     email: targetEmail,
     activationToken: token
@@ -774,20 +774,20 @@ app.post('/api/resend-activation', async (req, res) => {
 });
 
 // Activate endpoint
-app.post('/api/activate', (req, res) => {
+app.post('/api/activate', async (req, res) => {
   const { token } = req.body;
   if (!token) {
     res.status(400).json({ success: false, error: 'Activation token is required.' });
     return;
   }
 
-  const user = db.getUserByActivationToken(token);
+  const user = await db.getUserByActivationToken(token);
   if (!user) {
     res.status(400).json({ success: false, error: 'Invalid or expired activation link.' });
     return;
   }
 
-  const updatedUser = db.createOrUpdateUser({
+  const updatedUser = await db.createOrUpdateUser({
     id: user.id,
     activated: true,
     activationToken: undefined
@@ -834,10 +834,10 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     // Find or create user in our database
-    let user = db.getUserByEmail(email);
+    let user = await db.getUserByEmail(email);
     if (!user) {
       const userId = `u_${Math.random().toString(36).substring(2, 11)}`;
-      user = db.createOrUpdateUser({
+      user = await db.createOrUpdateUser({
         id: userId,
         username: name || email.split('@')[0],
         email,
@@ -852,7 +852,7 @@ app.post('/api/auth/google', async (req, res) => {
       if (!user.activated) {
         user.activated = true;
         user.activationToken = undefined;
-        db.createOrUpdateUser(user);
+        await db.createOrUpdateUser(user);
         console.log(`[Google Auth] Activated existing user: ${user.username}`);
       }
     }
@@ -874,14 +874,14 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 // Login endpoint
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     res.status(400).json({ success: false, error: 'Please provide email and password.' });
     return;
   }
 
-  const user = db.getUserByEmail(email);
+  const user = await db.getUserByEmail(email);
   if (!user || user.password !== password) {
     res.status(400).json({ success: false, error: 'Invalid email or password.' });
     return;
@@ -912,7 +912,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     return;
   }
 
-  const user = db.getUserByEmail(email);
+  const user = await db.getUserByEmail(email);
   if (!user) {
     // Return success to avoid email enumeration attack, matching mock Image 3
     res.json({ success: true, message: 'If this e-mail exists a password reset link has been sent.' });
@@ -924,7 +924,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   const expires = new Date();
   expires.setHours(expires.getHours() + 1);
 
-  db.createOrUpdateUser({
+  await db.createOrUpdateUser({
     id: user.id,
     resetPasswordToken: token,
     resetPasswordExpires: expires
@@ -938,14 +938,14 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Reset password execution endpoint
-app.post('/api/auth/reset-password', (req, res) => {
+app.post('/api/auth/reset-password', async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) {
     res.status(400).json({ success: false, error: 'Token and new password are required.' });
     return;
   }
 
-  const user = db.getUserByResetToken(token);
+  const user = await db.getUserByResetToken(token);
   if (!user) {
     res.status(400).json({ success: false, error: 'Invalid or expired password reset token.' });
     return;
@@ -956,7 +956,7 @@ app.post('/api/auth/reset-password', (req, res) => {
     return;
   }
 
-  db.createOrUpdateUser({
+  await db.createOrUpdateUser({
     id: user.id,
     password: password,
     resetPasswordToken: undefined,
@@ -1180,10 +1180,10 @@ app.post('/api/payments/verify', async (req, res) => {
   }
 
   // Fetch user profile from database
-  let user = db.getUser(userId);
+  let user = await db.getUser(userId);
   if (!user) {
     console.log(`[Payment] User ${userId} not found in database. Registering guest profile...`);
-    user = db.createOrUpdateUser({
+    user = await db.createOrUpdateUser({
       id: userId,
       username: `Stranger_${userId.substring(2, 8)}`,
       isPremium: false
@@ -1195,7 +1195,7 @@ app.post('/api/payments/verify', async (req, res) => {
     if (orderId.startsWith('CARD-MOCK-') || orderId.startsWith('GPAY-MOCK-')) {
       console.log(`[Payment] Mock transaction ${orderId} captured. Upgrading user...`);
       user.isPremium = true;
-      db.createOrUpdateUser(user);
+      await db.createOrUpdateUser(user);
 
       // Notify user's socket connection of profile changes
       const socketId = userSocketMap.get(userId);
@@ -1287,10 +1287,10 @@ app.post('/api/payments/process-card', async (req, res) => {
   }
 
   // Fetch user profile from database
-  let user = db.getUser(userId);
+  let user = await db.getUser(userId);
   if (!user) {
     console.log(`[Payment] User ${userId} not found in database. Registering guest profile...`);
-    user = db.createOrUpdateUser({
+    user = await db.createOrUpdateUser({
       id: userId,
       username: `Stranger_${userId.substring(2, 8)}`,
       isPremium: false
@@ -1471,8 +1471,8 @@ app.post('/api/admin/logout', (req, res) => {
 app.use('/api/admin', adminAuthMiddleware);
 
 // Admin Stats
-app.get('/api/admin/stats', (req, res) => {
-  const users = db.getAllUsers();
+app.get('/api/admin/stats', async (req, res) => {
+  const users = await db.getAllUsers();
   const reports = (db as any).reports || [];
   res.json({
     totalUsers: users.length,
@@ -1486,8 +1486,8 @@ app.get('/api/admin/stats', (req, res) => {
 });
 
 // Admin Users List
-app.get('/api/admin/users', (req, res) => {
-  const users = db.getAllUsers();
+app.get('/api/admin/users', async (req, res) => {
+  const users = await db.getAllUsers();
   const usersWithOnlineStatus = users.map(user => ({
     id: user.id,
     username: user.username,
@@ -1507,15 +1507,15 @@ app.get('/api/admin/users', (req, res) => {
 });
 
 // Admin Toggle VIP Status
-app.post('/api/admin/users/:id/vip', (req, res) => {
+app.post('/api/admin/users/:id/vip', async (req, res) => {
   const { id } = req.params;
-  const user = db.getUser(id);
+  const user = await db.getUser(id);
   if (!user) {
     res.status(404).json({ success: false, error: 'User not found.' });
     return;
   }
   user.isPremium = !user.isPremium;
-  db.createOrUpdateUser(user);
+  await db.createOrUpdateUser(user);
   
   // Notify client if online
   const socketId = userSocketMap.get(id);
@@ -1527,9 +1527,9 @@ app.post('/api/admin/users/:id/vip', (req, res) => {
 });
 
 // Admin Toggle Activation Status
-app.post('/api/admin/users/:id/activate', (req, res) => {
+app.post('/api/admin/users/:id/activate', async (req, res) => {
   const { id } = req.params;
-  const user = db.getUser(id);
+  const user = await db.getUser(id);
   if (!user) {
     res.status(404).json({ success: false, error: 'User not found.' });
     return;
@@ -1549,7 +1549,7 @@ app.post('/api/admin/users/:id/activate', (req, res) => {
     user.activationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
   
-  db.createOrUpdateUser(user);
+  await db.createOrUpdateUser(user);
   
   // Notify client if online
   const socketId = userSocketMap.get(id);
@@ -1561,7 +1561,7 @@ app.post('/api/admin/users/:id/activate', (req, res) => {
 });
 
 // Admin Ban User (Deletes from DB & Disconnects)
-app.delete('/api/admin/users/:id', (req, res) => {
+app.delete('/api/admin/users/:id', async (req, res) => {
   const { id } = req.params;
 
   if (id && id.startsWith('sim_')) {
@@ -1569,7 +1569,7 @@ app.delete('/api/admin/users/:id', (req, res) => {
     return;
   }
 
-  const user = db.getUser(id);
+  const user = await db.getUser(id);
   if (!user) {
     res.status(404).json({ success: false, error: 'User not found.' });
     return;
@@ -1590,16 +1590,17 @@ app.delete('/api/admin/users/:id', (req, res) => {
   }
 
   // Delete from database
-  (db as any).users.delete(id);
+  await db.deleteUser(id);
 
   res.json({ success: true });
 });
 
 // Admin Reports List
-app.get('/api/admin/reports', (req, res) => {
+app.get('/api/admin/reports', async (req, res) => {
   const reports = (db as any).reports || [];
-  const detailedReports = reports.map((r: any) => {
-    const reporter = db.getUser(r.reporterId);
+  
+  const detailedReports = await Promise.all(reports.map(async (r: any) => {
+    const reporter = await db.getUser(r.reporterId);
     
     let reportedName = 'Unknown';
     if (r.reportedId && r.reportedId.startsWith('sim_')) {
@@ -1610,7 +1611,7 @@ app.get('/api/admin/reports', (req, res) => {
       };
       reportedName = botNameMap[r.reportedId] || 'Simulated Bot';
     } else {
-      const reported = db.getUser(r.reportedId);
+      const reported = await db.getUser(r.reportedId);
       reportedName = reported?.username || 'Unknown';
     }
 
@@ -1619,7 +1620,7 @@ app.get('/api/admin/reports', (req, res) => {
       reporterName: reporter?.username || 'Unknown',
       reportedName
     };
-  });
+  }));
   res.json(detailedReports);
 });
 
@@ -1637,14 +1638,14 @@ app.post('/api/admin/reports/:id/resolve', (req, res) => {
 });
 
 // Admin Active Sockets List
-app.get('/api/admin/sockets', (req, res) => {
+app.get('/api/admin/sockets', async (req, res) => {
   const activeSockets: any[] = [];
   
   for (const [socketId, userId] of socketUserMap.entries()) {
-    const user = db.getUser(userId);
+    const user = await db.getUser(userId);
     const partnerSocketId = matchmaker.getPartnerSocketId(socketId);
     const partnerUserId = partnerSocketId ? socketUserMap.get(partnerSocketId) : null;
-    const partner = partnerUserId ? db.getUser(partnerUserId) : null;
+    const partner = partnerUserId ? await db.getUser(partnerUserId) : null;
     
     let state = 'Idle';
     if (partner) {
@@ -1752,9 +1753,9 @@ app.delete('/api/admin/bots/:id', (req, res) => {
 });
 
 // Public Endpoint to retrieve current video bot pool based on user tier
-app.get('/api/bots', (req, res) => {
+app.get('/api/bots', async (req, res) => {
   const { userId, isPremium } = req.query;
-  const user = userId ? db.getUser(String(userId)) : undefined;
+  const user = userId ? await db.getUser(String(userId)) : undefined;
   const isPremiumUser = (user ? user.isPremium : false) || isPremium === 'true';
   
   const allBots = db.getVideoBots();

@@ -23,7 +23,7 @@ class Matchmaker {
   // Map of socketId -> matchStartTime
   private matchStartTimes = new Map<string, Date>();
 
-  addToQueue(socket: Socket, userId: string, filters: MatchFilters) {
+  async addToQueue(socket: Socket, userId: string, filters: MatchFilters) {
     // Prevent duplicate entries
     this.removeFromQueue(userId);
 
@@ -31,7 +31,7 @@ class Matchmaker {
     this.endActiveMatch(socket.id);
 
     // Fetch profile to verify premium status
-    const profile = db.getUser(userId);
+    const profile = await db.getUser(userId);
     const isPremium = profile ? profile.isPremium : false;
 
     // Securely override gender filter to 'everyone' on the backend for non-VIPs
@@ -50,7 +50,7 @@ class Matchmaker {
     console.log(`User ${userId} joined matchmaking queue. Active queue size: ${this.queue.size}`);
 
     // Trigger match loop immediately for this user
-    this.tryMatch(userEntry);
+    await this.tryMatch(userEntry);
   }
 
   removeFromQueue(userId: string) {
@@ -72,7 +72,7 @@ class Matchmaker {
     return this.activeMatches.get(socketId);
   }
 
-  private tryMatch(newUser: QueueUser) {
+  private async tryMatch(newUser: QueueUser) {
     let matchedCandidate: QueueUser | null = null;
     let highestScore = -1;
 
@@ -89,7 +89,7 @@ class Matchmaker {
         );
 
         if (hasCommonInterests) {
-          const score = this.getMatchScore(newUser, candidate);
+          const score = await this.getMatchScore(newUser, candidate);
           if (score !== null && score > highestScore) {
             highestScore = score;
             matchedCandidate = candidate;
@@ -105,7 +105,7 @@ class Matchmaker {
       for (const [candidateId, candidate] of this.queue.entries()) {
         if (candidateId === newUser.userId) continue;
 
-        const score = this.getMatchScore(newUser, candidate);
+        const score = await this.getMatchScore(newUser, candidate);
         if (score !== null && score > highestScore) {
           highestScore = score;
           matchedCandidate = candidate;
@@ -127,8 +127,8 @@ class Matchmaker {
       this.matchStartTimes.set(matchedCandidate.socket.id, startTime);
 
       // Fetch profile info
-      const profileA = db.getUser(newUser.userId) || db.createOrUpdateUser({ id: newUser.userId });
-      const profileB = db.getUser(matchedCandidate.userId) || db.createOrUpdateUser({ id: matchedCandidate.userId });
+      const profileA = (await db.getUser(newUser.userId)) || (await db.createOrUpdateUser({ id: newUser.userId }));
+      const profileB = (await db.getUser(matchedCandidate.userId)) || (await db.createOrUpdateUser({ id: matchedCandidate.userId }));
 
       // Notify both sockets
       newUser.socket.emit('match_found', {
@@ -147,14 +147,14 @@ class Matchmaker {
     }
   }
 
-  private getMatchScore(userA: QueueUser, userB: QueueUser): number | null {
-    const profileA = db.getUser(userA.userId);
-    const profileB = db.getUser(userB.userId);
+  private async getMatchScore(userA: QueueUser, userB: QueueUser): Promise<number | null> {
+    const profileA = await db.getUser(userA.userId);
+    const profileB = await db.getUser(userB.userId);
 
     if (!profileA || !profileB) return 0; // Default score if profiles are missing
 
     // Strict Constraint 1: Block List
-    if (db.isBlocked(profileA.id, profileB.id)) {
+    if (await db.isBlocked(profileA.id, profileB.id)) {
       return null;
     }
 
@@ -203,7 +203,7 @@ class Matchmaker {
     return score;
   }
 
-  establishDirectMatch(socketA: Socket, userIdA: string, socketB: Socket, userIdB: string) {
+  async establishDirectMatch(socketA: Socket, userIdA: string, socketB: Socket, userIdB: string) {
     // End any active matches first
     this.endActiveMatch(socketA.id);
     this.endActiveMatch(socketB.id);
@@ -220,8 +220,8 @@ class Matchmaker {
     this.matchStartTimes.set(socketA.id, startTime);
     this.matchStartTimes.set(socketB.id, startTime);
 
-    const profileA = db.getUser(userIdA) || db.createOrUpdateUser({ id: userIdA });
-    const profileB = db.getUser(userIdB) || db.createOrUpdateUser({ id: userIdB });
+    const profileA = (await db.getUser(userIdA)) || (await db.createOrUpdateUser({ id: userIdA }));
+    const profileB = (await db.getUser(userIdB)) || (await db.createOrUpdateUser({ id: userIdB }));
 
     // Notify A
     socketA.emit('match_found', {

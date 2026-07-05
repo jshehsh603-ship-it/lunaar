@@ -25,13 +25,13 @@ export function setupSocketHandlers(io: Server) {
     console.log(`Socket connected: ${socket.id}`);
 
     // Register User Profile or authenticate
-    socket.on('register_user', (data: { userId: string; profile: Partial<UserProfile> }) => {
+    socket.on('register_user', async (data: { userId: string; profile: Partial<UserProfile> }) => {
       const { userId, profile } = data;
       socketUserMap.set(socket.id, userId);
       userSocketMap.set(userId, socket.id);
 
       // Create/Update profile in database
-      const userProfile = db.createOrUpdateUser({
+      const userProfile = await db.createOrUpdateUser({
         ...profile,
         id: userId
       });
@@ -66,7 +66,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Join Private Room (for direct call invites)
-    socket.on('join_private_room', (data: { roomId: string }) => {
+    socket.on('join_private_room', async (data: { roomId: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
@@ -76,6 +76,7 @@ export function setupSocketHandlers(io: Server) {
       matchmaker.removeFromQueue(userId);
       matchmaker.endActiveMatch(socket.id);
 
+      socket.join(data.roomId);
       socketPrivateRoomMap.set(socket.id, data.roomId);
 
       let roomUsers = privateRooms.get(data.roomId) || [];
@@ -104,7 +105,7 @@ export function setupSocketHandlers(io: Server) {
           const socketB = io.sockets.sockets.get(socketIdB);
 
           if (socketA && socketB) {
-            matchmaker.establishDirectMatch(socketA, userA, socketB, userB);
+            await matchmaker.establishDirectMatch(socketA, userA, socketB, userB);
             // Clear room once matched
             privateRooms.delete(data.roomId);
           }
@@ -113,7 +114,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Stop matching
-    socket.on('stop_matching', () => {
+    socket.on('stop_matching', async () => {
       const userId = socketUserMap.get(socket.id);
       if (userId) {
         matchmaker.removeFromQueue(userId);
@@ -124,7 +125,7 @@ export function setupSocketHandlers(io: Server) {
           const { partnerSocketId, durationSeconds } = endResult;
           const partnerUserId = socketUserMap.get(partnerSocketId);
           if (partnerUserId) {
-            db.addMatchHistory(userId, partnerUserId, durationSeconds);
+            await db.addMatchHistory(userId, partnerUserId, durationSeconds);
           }
           io.to(partnerSocketId).emit('partner_skipped');
         }
@@ -150,7 +151,7 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Next match (skip current partner and rejoin queue)
-    socket.on('next_match', (data: { filters: MatchFilters }) => {
+    socket.on('next_match', async (data: { filters: MatchFilters }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
@@ -164,7 +165,7 @@ export function setupSocketHandlers(io: Server) {
 
         // Record history
         if (partnerUserId) {
-          db.addMatchHistory(userId, partnerUserId, durationSeconds);
+          await db.addMatchHistory(userId, partnerUserId, durationSeconds);
         }
 
         // Notify partner that they were skipped
@@ -206,11 +207,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Send chat message in match
-    socket.on('send_match_message', (data: { content: string }) => {
+    socket.on('send_match_message', async (data: { content: string }) => {
       const partnerSocketId = matchmaker.getPartnerSocketId(socket.id);
       const userId = socketUserMap.get(socket.id);
       if (partnerSocketId && userId) {
-        const senderProfile = db.getUser(userId);
+        const senderProfile = await db.getUser(userId);
         io.to(partnerSocketId).emit('match_message', {
           id: `match_msg_${Math.random().toString(36).substring(2, 9)}`,
           senderId: userId,
@@ -264,60 +265,63 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Friend request actions inside chat or profiles
-    socket.on('send_friend_request', (data: { targetUserId: string }) => {
+    socket.on('send_friend_request', async (data: { targetUserId: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
       const targetSocketId = userSocketMap.get(data.targetUserId);
       
       // Automatically add them as friends for the random video experience (convenient UX)
-      db.addFriendRelation(userId, data.targetUserId);
+      await db.addFriendRelation(userId, data.targetUserId);
 
       // Notify sender
+      const targetProfile = await db.getUser(data.targetUserId);
       socket.emit('friend_request_status', {
         targetUserId: data.targetUserId,
         status: 'accepted',
-        profile: db.getUser(data.targetUserId)
+        profile: targetProfile
       });
 
       // Notify receiver if online
       if (targetSocketId) {
+        const senderProfile = await db.getUser(userId);
         io.to(targetSocketId).emit('friend_request_status', {
           targetUserId: userId,
           status: 'accepted',
-          profile: db.getUser(userId)
+          profile: senderProfile
         });
         io.to(targetSocketId).emit('notification', {
           title: 'New Friend Added!',
-          message: `${db.getUser(userId)?.username || 'Someone'} added you as a friend.`
+          message: `${senderProfile?.username || 'Someone'} added you as a friend.`
         });
       }
     });
 
     // Social follow actions
-    socket.on('follow_user', (data: { targetUserId: string }) => {
+    socket.on('follow_user', async (data: { targetUserId: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      db.followUser(userId, data.targetUserId);
-      socket.emit('profile_updated', db.getUser(userId));
+      await db.followUser(userId, data.targetUserId);
+      socket.emit('profile_updated', await db.getUser(userId));
 
       const targetSocketId = userSocketMap.get(data.targetUserId);
       if (targetSocketId) {
-        io.to(targetSocketId).emit('profile_updated', db.getUser(data.targetUserId));
+        io.to(targetSocketId).emit('profile_updated', await db.getUser(data.targetUserId));
+        const senderProfile = await db.getUser(userId);
         io.to(targetSocketId).emit('notification', {
           title: 'New Follower!',
-          message: `${db.getUser(userId)?.username || 'A stranger'} started following you.`
+          message: `${senderProfile?.username || 'A stranger'} started following you.`
         });
       }
     });
 
     // Block User
-    socket.on('block_user', (data: { targetUserId: string }) => {
+    socket.on('block_user', async (data: { targetUserId: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      db.blockUser(userId, data.targetUserId);
+      await db.blockUser(userId, data.targetUserId);
       socket.emit('user_blocked', { blockedUserId: data.targetUserId });
 
       // If matching, skip them immediately
@@ -332,11 +336,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Report User
-    socket.on('report_user', (data: { targetUserId: string; reason: string }) => {
+    socket.on('report_user', async (data: { targetUserId: string; reason: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      db.reportUser(userId, data.targetUserId, data.reason);
+      await db.reportUser(userId, data.targetUserId, data.reason);
       socket.emit('user_reported', { reportedUserId: data.targetUserId });
 
       // If matching, skip them immediately
@@ -351,11 +355,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Direct message communication (Offline/Friends chat)
-    socket.on('send_direct_message', (data: { receiverId: string; content: string }) => {
+    socket.on('send_direct_message', async (data: { receiverId: string; content: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      const message = db.addMessage(userId, data.receiverId, data.content);
+      const message = await db.addMessage(userId, data.receiverId, data.content);
       
       // Send message back to sender
       socket.emit('direct_message', message);
@@ -368,11 +372,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Fetch message history for direct messages
-    socket.on('get_direct_messages', (data: { partnerId: string }) => {
+    socket.on('get_direct_messages', async (data: { partnerId: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      const messages = db.getMessagesBetween(userId, data.partnerId);
+      const messages = await db.getMessagesBetween(userId, data.partnerId);
       socket.emit('direct_messages_history', {
         partnerId: data.partnerId,
         messages
@@ -380,10 +384,10 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Fetch Friends List
-    socket.on('get_friends', () => {
+    socket.on('get_friends', async () => {
       const userId = socketUserMap.get(socket.id);
       if (userId) {
-        const friends = db.getFriends(userId);
+        const friends = await db.getFriends(userId);
         socket.emit('friends_list', friends.map(friend => {
           const isOnline = userSocketMap.has(friend.id);
           return {
@@ -395,19 +399,19 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Fetch Profile
-    socket.on('get_profile', (data: { targetUserId: string }) => {
-      const profile = db.getUser(data.targetUserId);
+    socket.on('get_profile', async (data: { targetUserId: string }) => {
+      const profile = await db.getUser(data.targetUserId);
       if (profile) {
         socket.emit('profile_details', {
           profile,
-          isFriend: socketUserMap.get(socket.id) ? db.isFriend(socketUserMap.get(socket.id)!, data.targetUserId) : false,
-          isFollowing: socketUserMap.get(socket.id) ? db.getFollowing(socketUserMap.get(socket.id)!).some(u => u.id === data.targetUserId) : false
+          isFriend: socketUserMap.get(socket.id) ? await db.isFriend(socketUserMap.get(socket.id)!, data.targetUserId) : false,
+          isFollowing: socketUserMap.get(socket.id) ? (await db.getFollowing(socketUserMap.get(socket.id)!)).some(u => u.id === data.targetUserId) : false
         });
       }
     });
 
     // Handle Socket Disconnect
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`Socket disconnected: ${socket.id}`);
 
       const userId = socketUserMap.get(socket.id);
@@ -434,7 +438,7 @@ export function setupSocketHandlers(io: Server) {
           const { partnerSocketId, durationSeconds } = endResult;
           const partnerUserId = socketUserMap.get(partnerSocketId);
           if (partnerUserId) {
-            db.addMatchHistory(userId, partnerUserId, durationSeconds);
+            await db.addMatchHistory(userId, partnerUserId, durationSeconds);
           }
           // Notify partner
           io.to(partnerSocketId).emit('partner_disconnected');
