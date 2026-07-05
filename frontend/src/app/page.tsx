@@ -1610,7 +1610,7 @@ export default function LandingPage() {
                 <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-955 flex flex-col gap-1 text-left shadow-sm mx-2">
                   <span className="font-extrabold text-[10px] uppercase tracking-wider text-red-700">⚠️ IMPORTANT</span>
                   <p className="font-bold text-xs leading-normal">
-                    Gmail and other mail providers often put this email in your <span className="underline decoration-wavy decoration-red-500 font-black text-red-650">Spam or Junk folder</span>. Please check there first!
+                    Gmail and other mail providers often put this email in your <span className="font-black text-red-600">Spam or Junk folder</span>. Please check there first!
                   </p>
                 </div>
 
