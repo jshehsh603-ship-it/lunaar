@@ -1332,9 +1332,32 @@ app.post('/api/payments/process-card', async (req, res) => {
       res.status(400).json({ success: false, error: 'Invalid expiry date format. Expected MM / YY.' });
       return;
     }
-    const month = expiryParts[0].trim();
+    const month = expiryParts[0].trim().padStart(2, '0');
     const year = `20${expiryParts[1].trim()}`;
     const formattedExpiry = `${year}-${month}`;
+
+    // US State name normalization (PayPal requires 2-letter abbreviation for US/CA billing area 1)
+    const STATE_MAP: Record<string, string> = {
+      'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
+      'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE', 'florida': 'FL', 'georgia': 'GA',
+      'hawaii': 'HI', 'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA',
+      'kansas': 'KS', 'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+      'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS', 'missouri': 'MO',
+      'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+      'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH',
+      'oklahoma': 'OK', 'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+      'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT', 'vermont': 'VT',
+      'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY'
+    };
+    
+    let billingState = state || 'State';
+    const cleanCountry = (countryCode || 'US').trim().toUpperCase();
+    if (cleanCountry === 'US') {
+      const cleanState = billingState.trim().toLowerCase();
+      if (STATE_MAP[cleanState]) {
+        billingState = STATE_MAP[cleanState];
+      }
+    }
 
     const cardPayload = {
       number: cleanCardNumber,
@@ -1343,9 +1366,9 @@ app.post('/api/payments/process-card', async (req, res) => {
       name: cardholderName,
       streetAddress,
       city: city || 'City',
-      state: state || 'State',
+      state: billingState,
       postalCode: postalCode || '00000',
-      countryCode: countryCode || 'US'
+      countryCode: cleanCountry
     };
 
     console.log(`[PayPal] Processing direct card payment for user ${userId}...`);
