@@ -1116,7 +1116,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-4">
               <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">Short Term Pass</div>
               <h3 className="font-extrabold text-2xl text-white">1 Week VIP Pass</h3>
-              <div className="text-3xl font-black">$8.99 <span className="text-xs text-slate-500 font-semibold">/ week</span></div>
+              <div className="text-3xl font-black">$1.00 <span className="text-xs text-slate-500 font-semibold">/ week</span></div>
               <div className="h-px bg-white/5"></div>
               <ul className="flex flex-col gap-2.5 text-xs text-slate-300">
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-brand-primary" /> Unlock Gender filters</li>

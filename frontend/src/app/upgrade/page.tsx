@@ -76,7 +76,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
           label: 'paypal'
         },
         createOrder: (data: any, actions: any) => {
-          const amount = plan === 'week' ? '8.99' : '24.99';
+          const amount = plan === 'week' ? '1.00' : '24.99';
           return actions.order.create({
             purchase_units: [
               {
@@ -466,7 +466,7 @@ function UpgradeContent() {
                 <span className="text-[11px] text-slate-300 font-medium leading-tight">Weekly renewal. Cancel at any time.</span>
               </div>
               <div className="text-right flex flex-col gap-0.5 shrink-0">
-                <span className="text-xl font-black text-white">$8.99</span>
+                <span className="text-xl font-black text-white">$1.00</span>
                 <span className="text-[9px] text-slate-500 font-bold uppercase">/ week</span>
               </div>
             </button>
@@ -581,7 +581,7 @@ function UpgradeContent() {
                   {isSummaryExpanded && (
                     <div className="flex flex-col gap-3 pt-3 border-t border-slate-150 text-[13px] text-slate-600">
                       <p className="leading-relaxed text-slate-500 font-medium text-xs">
-                        Subscription renews automatically on {getRenewalDate()} for ${selectedPlan === 'week' ? '8.99' : '24.99'}/{selectedPlan === 'week' ? 'week' : 'month'}. No commitment, cancel anytime.
+                        Subscription renews automatically on {getRenewalDate()} for ${selectedPlan === 'week' ? '1.00' : '24.99'}/{selectedPlan === 'week' ? 'week' : 'month'}. No commitment, cancel anytime.
                       </p>
                       
                       <p className="font-bold text-[10px] text-slate-400 uppercase tracking-wider">
@@ -591,20 +591,20 @@ function UpgradeContent() {
                       <div className="flex flex-col gap-2 pt-1 text-[13px]">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500">Subtotal</span>
-                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '7.55' : '20.99'}</span>
+                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '0.84' : '20.99'}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500">VAT</span>
-                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '1.13' : '3.15'}</span>
+                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '0.13' : '3.15'}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-500">Fee</span>
-                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '0.31' : '0.85'}</span>
+                          <span className="font-semibold text-slate-800">${selectedPlan === 'week' ? '0.03' : '0.85'}</span>
                         </div>
                         <div className="h-px bg-slate-100 my-1"></div>
                         <div className="flex items-center justify-between text-sm font-bold text-slate-900">
                           <span>Total to pay</span>
-                          <span className="text-base font-black text-slate-900">${selectedPlan === 'week' ? '8.99' : '24.99'}</span>
+                          <span className="text-base font-black text-slate-900">${selectedPlan === 'week' ? '1.00' : '24.99'}</span>
                         </div>
                       </div>
                     </div>

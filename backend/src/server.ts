@@ -1236,7 +1236,7 @@ app.post('/api/payments/verify', async (req, res) => {
     }
 
     // Validate expected payment amount matches selected pass
-    const expectedAmount = plan === 'week' ? '8.99' : '24.99';
+    const expectedAmount = plan === 'week' ? '1.00' : '24.99';
     const amountVal = order.purchase_units[0]?.amount?.value;
     const currency = order.purchase_units[0]?.amount?.currency_code;
 
@@ -1324,7 +1324,7 @@ app.post('/api/payments/process-card', async (req, res) => {
 
   try {
     // Expected amount based on plan choice
-    const amount = plan === 'week' ? '8.99' : '24.99';
+    const amount = plan === 'week' ? '1.00' : '24.99';
 
     // Parse expiry date from "MM / YY" to "YYYY-MM"
     const expiryParts = expiryDate.split('/');
