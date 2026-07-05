@@ -7,7 +7,7 @@ import confetti from 'canvas-confetti';
 import { 
   Video, Globe, Shield, Sparkles, Heart, Users, MessageSquare, 
   Search, Check, Zap, HelpCircle, Lock, Menu, X, ArrowRight, Star, RefreshCw,
-  ChevronDown, User
+  ChevronDown, User, Mail
 } from 'lucide-react';
 import audioSynth from '../components/AudioEffects';
 
@@ -40,6 +40,16 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('resetToken');
+      if (token) {
+        setResetToken(token);
+        setAuthMode('reset');
+        setShowAuthModal(true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, []);
 
   const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -48,12 +58,15 @@ export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'reset'>('login');
   
   // Auth Form Fields
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [nicknameInput, setNicknameInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -162,6 +175,71 @@ export default function LandingPage() {
     e.preventDefault();
     audioSynth.playClick();
     setAuthError('');
+    
+    if (authMode === 'forgot') {
+      if (!emailInput) {
+        setAuthError('Please enter your email address.');
+        return;
+      }
+      setAuthLoading(true);
+      const apiUrl = getApiUrl();
+      try {
+        const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setForgotSuccess(true);
+        } else {
+          setAuthError(data.error || 'Password reset request failed.');
+        }
+      } catch (err) {
+        setAuthError('Failed to connect to authentication server.');
+      } finally {
+        setAuthLoading(false);
+      }
+      return;
+    }
+    
+    if (authMode === 'reset') {
+      if (!passwordInput || !confirmPasswordInput) {
+        setAuthError('Please fill in all fields.');
+        return;
+      }
+      if (passwordInput !== confirmPasswordInput) {
+        setAuthError('Passwords do not match.');
+        return;
+      }
+      setAuthLoading(true);
+      const apiUrl = getApiUrl();
+      try {
+        const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: resetToken,
+            password: passwordInput
+          })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          alert('Password reset successful! You can now log in.');
+          setAuthMode('login');
+          setPasswordInput('');
+          setConfirmPasswordInput('');
+          setResetToken('');
+        } else {
+          setAuthError(data.error || 'Password reset failed.');
+        }
+      } catch (err) {
+        setAuthError('Failed to connect to authentication server.');
+      } finally {
+        setAuthLoading(false);
+      }
+      return;
+    }
     
     if (!emailInput || !passwordInput) {
       setAuthError('Please fill in all fields.');
@@ -1186,46 +1264,65 @@ export default function LandingPage() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="glass-panel border border-white/10 w-full max-w-[420px] rounded-3xl p-6 md:p-8 relative shadow-premium"
+              className={
+                authMode === 'forgot' || authMode === 'reset'
+                  ? 'bg-white w-full max-w-[420px] rounded-3xl p-6 md:p-8 relative shadow-2xl border border-slate-100'
+                  : 'glass-panel border border-white/10 w-full max-w-[420px] rounded-3xl p-6 md:p-8 relative shadow-premium'
+              }
             >
               <button
-                onClick={() => { setShowAuthModal(false); setAuthError(''); }}
-                className="absolute top-5 right-5 p-1 rounded-xl text-slate-400 hover:text-white transition"
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setAuthError('');
+                  setForgotSuccess(false);
+                  if (authMode === 'forgot' || authMode === 'reset') {
+                    setAuthMode('login');
+                  }
+                }}
+                className={`absolute top-5 right-5 p-1 rounded-xl transition ${
+                  authMode === 'forgot' || authMode === 'reset'
+                    ? 'text-slate-455 hover:text-slate-700'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="flex flex-col gap-6 text-left">
-                <div className="text-center flex flex-col gap-2">
-                  <h3 className="font-extrabold text-2xl text-white font-sans">
-                    {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
-                  </h3>
-                  <p className="text-slate-400 text-xs leading-relaxed">
-                    {authMode === 'login' 
-                      ? 'Sign in to access your matches, history, and contact book.' 
-                      : 'Join Lunaar today to start video matching with verified users.'}
-                  </p>
-                </div>
+                {(authMode === 'login' || authMode === 'signup') && (
+                  <>
+                    <div className="text-center flex flex-col gap-2">
+                      <h3 className="font-extrabold text-2xl text-white font-sans">
+                        {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                      </h3>
+                      <p className="text-slate-400 text-xs leading-relaxed">
+                        {authMode === 'login' 
+                          ? 'Sign in to access your matches, history, and contact book.' 
+                          : 'Join Lunaar today to start video matching with verified users.'}
+                      </p>
+                    </div>
 
-                {/* Tab selector */}
-                <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-slate-900/60 border border-white/5">
-                  <button
-                    onClick={() => { setAuthMode('login'); setAuthError(''); }}
-                    className={`py-2 rounded-lg text-xs font-bold transition ${
-                      authMode === 'login' ? 'bg-brand-primary text-white shadow' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => { setAuthMode('signup'); setAuthError(''); }}
-                    className={`py-2 rounded-lg text-xs font-bold transition ${
-                      authMode === 'signup' ? 'bg-brand-primary text-white shadow' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Register
-                  </button>
-                </div>
+                    {/* Tab selector */}
+                    <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-slate-900/60 border border-white/5">
+                      <button
+                        onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                        className={`py-2 rounded-lg text-xs font-bold transition ${
+                          authMode === 'login' ? 'bg-brand-primary text-white shadow' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                        className={`py-2 rounded-lg text-xs font-bold transition ${
+                          authMode === 'signup' ? 'bg-brand-primary text-white shadow' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Register
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {/* Auth Error Display */}
                 {authError && (
@@ -1235,58 +1332,204 @@ export default function LandingPage() {
                 )}
 
                 {/* Form fields */}
-                <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
-                  {authMode === 'signup' && (
+                {(authMode === 'login' || authMode === 'signup') && (
+                  <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+                    {authMode === 'signup' && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Display Username</label>
+                        <input
+                          type="text"
+                          value={nicknameInput}
+                          onChange={(e) => setNicknameInput(e.target.value)}
+                          placeholder="e.g. JohnDoe"
+                          className="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Display Username</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
                       <input
-                        type="text"
-                        value={nicknameInput}
-                        onChange={(e) => setNicknameInput(e.target.value)}
-                        placeholder="e.g. JohnDoe"
+                        type="email"
+                        required
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="e.g. name@example.com"
                         className="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
                       />
                     </div>
-                  )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="e.g. name@example.com"
-                      className="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
-                    />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
+                      />
+                      {authMode === 'login' && (
+                        <div className="flex justify-end mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthMode('forgot');
+                              setAuthError('');
+                              setEmailInput('');
+                              setForgotSuccess(false);
+                            }}
+                            className="text-xs font-semibold text-brand-primary hover:text-brand-primaryHover transition hover:underline"
+                          >
+                            Forgot Password?
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={authLoading}
+                      className="w-full py-3 mt-2 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-white font-extrabold text-xs transition flex items-center justify-center gap-2"
+                    >
+                      {authLoading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : authMode === 'login' ? (
+                        'Sign In'
+                      ) : (
+                        'Create Account'
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {/* FORGOT PASSWORD FORM (Image 2) */}
+                {authMode === 'forgot' && !forgotSuccess && (
+                  <div className="flex flex-col gap-5 text-center mt-2">
+                    <h3 className="font-extrabold text-3xl text-slate-900 font-sans tracking-tight">
+                      Lost Password?
+                    </h3>
+                    <p className="text-slate-500 text-sm leading-relaxed text-left px-1 font-medium">
+                      Type your e-mail below and we'll send you an e-mail with instructions to reset your password.
+                    </p>
+                    <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4 text-left">
+                      <div className="flex flex-col gap-1.5 relative">
+                        <input
+                          type="email"
+                          required
+                          value={emailInput}
+                          onChange={(e) => setEmailInput(e.target.value)}
+                          placeholder="Email Address"
+                          className="w-full py-3 px-4 pr-10 rounded-xl text-sm font-medium bg-[#f8fafc] border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-[#e52424] focus:bg-white outline-none transition"
+                        />
+                        <div className="absolute right-4 top-[14px] text-slate-450">
+                          <User className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="w-full py-3.5 mt-2 rounded-xl bg-[#e52424] hover:bg-[#c91d1d] text-white font-extrabold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {authLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Send'
+                        )}
+                      </button>
+                    </form>
+                    
+                    <button
+                      type="button"
+                      onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                      className="text-xs font-bold text-slate-500 hover:text-slate-850 transition hover:underline mt-1"
+                    >
+                      Back to Sign In
+                    </button>
                   </div>
+                )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-900 border border-white/5 text-white focus:border-brand-primary outline-none"
-                    />
+                {/* FORGOT PASSWORD SUCCESS POPUP (Image 3) */}
+                {authMode === 'forgot' && forgotSuccess && (
+                  <div className="flex flex-col gap-5 text-center mt-2 py-4">
+                    <h3 className="font-extrabold text-3xl text-slate-900 font-sans tracking-tight">
+                      Lost Password?
+                    </h3>
+                    <div className="w-20 h-20 mx-auto flex items-center justify-center rounded-2xl bg-red-50 border-2 border-[#e52424]/20 text-[#e52424]">
+                      <Mail className="w-10 h-10" />
+                    </div>
+                    <p className="text-slate-800 font-bold text-sm leading-relaxed max-w-[280px] mx-auto">
+                      If this e-mail exists a password reset link has been sent.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAuthModal(false);
+                        setForgotSuccess(false);
+                        setAuthMode('login');
+                        setAuthError('');
+                        setEmailInput('');
+                      }}
+                      className="w-full py-3.5 mt-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm transition active:scale-[0.98]"
+                    >
+                      Close
+                    </button>
                   </div>
+                )}
 
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full py-3 mt-2 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-white font-extrabold text-xs transition flex items-center justify-center gap-2"
-                  >
-                    {authLoading ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : authMode === 'login' ? (
-                      'Sign In'
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-                </form>
+                {/* RESET PASSWORD FORM (Image 5) */}
+                {authMode === 'reset' && (
+                  <div className="flex flex-col gap-5 text-center mt-2">
+                    <h3 className="font-extrabold text-3xl text-slate-900 font-sans tracking-tight">
+                      Lost Password?
+                    </h3>
+                    <p className="text-slate-500 text-sm leading-relaxed text-left px-1 font-medium">
+                      Type your new password in the box below:
+                    </p>
+                    <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4 text-left">
+                      <div className="flex flex-col gap-1.5 relative">
+                        <input
+                          type="password"
+                          required
+                          value={passwordInput}
+                          onChange={(e) => setPasswordInput(e.target.value)}
+                          placeholder="Enter Password"
+                          className="w-full py-3 px-4 pr-10 rounded-xl text-sm font-medium bg-[#f8fafc] border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-[#e52424] focus:bg-white outline-none transition"
+                        />
+                        <div className="absolute right-4 top-[14px] text-slate-450">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 relative">
+                        <input
+                          type="password"
+                          required
+                          value={confirmPasswordInput}
+                          onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                          placeholder="Confirm Password"
+                          className="w-full py-3 px-4 pr-10 rounded-xl text-sm font-medium bg-[#f8fafc] border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-[#e52424] focus:bg-white outline-none transition"
+                        />
+                        <div className="absolute right-4 top-[14px] text-slate-455">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="w-full py-3.5 mt-2 rounded-xl bg-[#e52424] hover:bg-[#c91d1d] text-white font-extrabold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {authLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Confirm'
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                )}
 
                 {/* Divider temporarily removed
                 <div className="flex items-center gap-3 my-4">

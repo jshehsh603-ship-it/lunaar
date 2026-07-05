@@ -509,6 +509,88 @@ async function sendAdminActivationNotification(userEmail: string, token: string,
   }
 }
 
+async function sendForgotPasswordEmail(email: string, token: string, username: string, origin?: string) {
+  const baseUrl = origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const resetLink = `${baseUrl}/?resetToken=${token}`;
+  
+  console.log(`\n==================================================`);
+  console.log(`📧 PASSWORD RESET EMAIL FOR: ${email}`);
+  console.log(`🔗 LINK: ${resetLink}`);
+  console.log(`==================================================\n`);
+
+  const subject = "Password Reset Request - Lunaar";
+  const text = `Someone just requested a password reset on Lunaar. If this action was initiated by you, please click here to set your new password: ${resetLink} . If not, simply ignore this e-mail.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; color: #333; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <!-- Logo Section -->
+      <div style="margin-bottom: 28px;">
+        <h1 style="color: #FF3B3B; font-size: 32px; font-weight: 900; letter-spacing: 4px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">LUNAAR</h1>
+        <a href="${baseUrl}" style="color: #4A5568; text-decoration: none; font-size: 13px; font-weight: 500; font-family: monospace;">lunaar.com</a>
+      </div>
+
+      <!-- Content -->
+      <div style="font-size: 15px; line-height: 1.6; color: #4A5568; margin-bottom: 32px; text-align: center;">
+        <p style="margin: 0 0 12px 0;">Someone just requested a password reset on <a href="${baseUrl}" style="color: #FF3B3B; text-decoration: underline; font-weight: bold;">Lunaar</a>.</p>
+        <p style="margin: 0 0 24px 0;">If this action was initiated by you, please click <a href="${resetLink}" style="color: #FF3B3B; text-decoration: underline; font-weight: bold;">here</a> to set your new password. If not, simply ignore this e-mail.</p>
+      </div>
+
+      <!-- Button -->
+      <div style="margin-bottom: 36px;">
+        <a href="${resetLink}" style="display: inline-block; background-color: #FF3B3B; color: #ffffff; padding: 16px 48px; font-size: 15px; font-weight: bold; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif; box-shadow: 0 4px 6px rgba(255, 59, 59, 0.2);">RESET MY PASSWORD</a>
+      </div>
+
+      <!-- Footer -->
+      <div style="background-color: #0F172A; padding: 24px; text-align: center; border-radius: 0 0 8px 8px; color: #94A3B8; font-size: 12px; margin: 40px -40px -40px -40px;">
+        <p style="margin: 0 0 8px 0;">You are currently registered as: <strong style="color: #F8FAFC;">${email}</strong></p>
+        <p style="margin: 0 0 16px 0;">This message is being sent to registered Lunaar members. Please do not reply to this email.</p>
+        <p style="margin: 0;"><a href="${baseUrl}/privacy" style="color: #FF3B3B; text-decoration: underline;">Privacy Policy</a></p>
+      </div>
+    </div>
+  `;
+
+  if (process.env.RESEND_API_KEY) {
+    const success = await sendEmailViaResend(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    const success = await sendEmailViaBrevo(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.MAILJET_API_KEY && process.env.MAILJET_SECRET_KEY) {
+    const success = await sendEmailViaMailjet(email, subject, text, html);
+    if (success) return;
+  }
+
+  if (process.env.GOOGLE_SCRIPT_URL) {
+    const success = await sendEmailViaGoogleScript(email, subject, text, html);
+    if (success) return;
+  }
+
+  const activeTransporter = await getTransporter();
+  if (activeTransporter) {
+    try {
+      const fromEmail = process.env.SMTP_FROM || 'noreply@lunaar.com';
+      const info = await activeTransporter.sendMail({
+        from: `"Lunaar" <${fromEmail}>`,
+        to: email,
+        subject,
+        text,
+        html
+      });
+
+      console.log(`[nodemailer] Email sent! Message ID: ${info.messageId}`);
+      if ((activeTransporter as any).isTestAccount) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`🔗 [Nodemailer Preview] Open this link to see the email in a web inbox: ${previewUrl}`);
+      }
+    } catch (err) {
+      console.error(`[nodemailer] Failed to send email:`, err);
+    }
+  }
+}
+
 async function sendWelcomeEmail(email: string, username: string, origin?: string) {
   const baseUrl = origin || process.env.FRONTEND_URL || 'http://localhost:3000';
   const activeTransporter = await getTransporter();
@@ -821,6 +903,69 @@ app.post('/api/login', (req, res) => {
     }
   });
 });
+
+// Forgot password request endpoint
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400).json({ success: false, error: 'Email address is required.' });
+    return;
+  }
+
+  const user = db.getUserByEmail(email);
+  if (!user) {
+    // Return success to avoid email enumeration attack, matching mock Image 3
+    res.json({ success: true, message: 'If this e-mail exists a password reset link has been sent.' });
+    return;
+  }
+
+  // Generate random token and expiry (1 hour)
+  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const expires = new Date();
+  expires.setHours(expires.getHours() + 1);
+
+  db.createOrUpdateUser({
+    id: user.id,
+    resetPasswordToken: token,
+    resetPasswordExpires: expires
+  });
+
+  sendForgotPasswordEmail(user.email!, token, user.username, req.headers.origin || undefined).catch(err => {
+    console.error('[Email] Error sending forgot password email asynchronously:', err);
+  });
+
+  res.json({ success: true, message: 'If this e-mail exists a password reset link has been sent.' });
+});
+
+// Reset password execution endpoint
+app.post('/api/auth/reset-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    res.status(400).json({ success: false, error: 'Token and new password are required.' });
+    return;
+  }
+
+  const user = db.getUserByResetToken(token);
+  if (!user) {
+    res.status(400).json({ success: false, error: 'Invalid or expired password reset token.' });
+    return;
+  }
+
+  if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
+    res.status(400).json({ success: false, error: 'Password reset token has expired.' });
+    return;
+  }
+
+  db.createOrUpdateUser({
+    id: user.id,
+    password: password,
+    resetPasswordToken: undefined,
+    resetPasswordExpires: undefined
+  });
+
+  res.json({ success: true, message: 'Password has been successfully reset.' });
+});
+
 
 // Basic check
 app.get('/health', (req, res) => {

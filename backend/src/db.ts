@@ -36,6 +36,8 @@ export interface UserProfile {
   password?: string;
   activated?: boolean;
   activationToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 }
 
 export interface DirectMessage {
@@ -222,7 +224,9 @@ class DatabaseService extends EventEmitter {
       createdAt: existing?.createdAt || new Date(),
       password: profile.password !== undefined ? profile.password : existing?.password,
       activated: profile.activated !== undefined ? profile.activated : (existing?.activated !== undefined ? existing.activated : true),
-      activationToken: profile.activationToken !== undefined ? profile.activationToken : existing?.activationToken
+      activationToken: profile.activationToken !== undefined ? profile.activationToken : existing?.activationToken,
+      resetPasswordToken: profile.resetPasswordToken !== undefined ? profile.resetPasswordToken : existing?.resetPasswordToken,
+      resetPasswordExpires: profile.resetPasswordExpires !== undefined ? profile.resetPasswordExpires : existing?.resetPasswordExpires
     };
     this.users.set(profile.id, updated);
     if (!this.friends.has(profile.id)) this.friends.set(profile.id, new Set());
@@ -239,6 +243,10 @@ class DatabaseService extends EventEmitter {
 
   getUserByActivationToken(token: string): UserProfile | undefined {
     return Array.from(this.users.values()).find(u => u.activationToken === token);
+  }
+
+  getUserByResetToken(token: string): UserProfile | undefined {
+    return Array.from(this.users.values()).find(u => u.resetPasswordToken === token);
   }
 
   getAllUsers(): UserProfile[] {
