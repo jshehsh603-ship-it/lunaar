@@ -1400,6 +1400,11 @@ export default function LandingPage() {
                         'Create Account'
                       )}
                     </button>
+                    {authMode === 'signup' && (
+                      <p className="text-[10px] text-slate-400 text-center mt-2 leading-relaxed font-medium">
+                        Note: Please check your <strong className="text-slate-350">Spam or Junk folder</strong> if you do not see the activation email in your inbox.
+                      </p>
+                    )}
                   </form>
                 )}
 
@@ -1461,6 +1466,9 @@ export default function LandingPage() {
                     </div>
                     <p className="text-slate-800 font-bold text-sm leading-relaxed max-w-[280px] mx-auto">
                       If this e-mail exists a password reset link has been sent.
+                    </p>
+                    <p className="text-[11px] text-slate-500 max-w-[260px] mx-auto font-medium leading-relaxed">
+                      Please check your <strong>Spam or Junk folder</strong> if the email does not show up in a few minutes.
                     </p>
                     <button
                       type="button"
@@ -1618,9 +1626,11 @@ export default function LandingPage() {
               <div className="bg-[#F0F4F8] p-8 border-t border-slate-200 text-left flex flex-col gap-5">
                 <div className="text-xs text-slate-600 leading-relaxed flex flex-col gap-3">
                   <p>Depending on your email provider, it could take a few minutes until you receive the email.</p>
-                  <div>
-                    <span className="font-bold text-slate-800">Didn't receive an email?</span>
-                    <p className="mt-1">Please check your <span className="font-bold text-slate-800">spam folder</span> or enter a new email address below.</p>
+                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-950 flex flex-col gap-1.5 shadow-sm">
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-red-700">⚠️ IMPORTANT</span>
+                    <p className="font-bold text-xs leading-normal">
+                      Gmail/Outlook often filters activation emails as spam. Please check your <span className="underline decoration-wavy decoration-red-500 font-black text-red-600">Spam or Junk folder</span> first!
+                    </p>
                   </div>
                 </div>
 
