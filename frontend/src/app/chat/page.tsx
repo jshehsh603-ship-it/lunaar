@@ -1068,10 +1068,11 @@ export default function ChatPage() {
       seenBotIds = [];
     }
     
-    const unseenBots = activePool.filter(bot => !seenBotIds.includes(bot.id));
-    if (unseenBots.length === 0) {
-      console.log('All available bots in activePool have been seen by this user. No further bot matches.');
-      return; // Do not reset seen bots; never meet them again!
+    let unseenBots = activePool.filter(bot => !seenBotIds.includes(bot.id));
+    if (unseenBots.length === 0 && activePool.length > 0) {
+      console.log('All available bots in activePool have been seen. Resetting seen history to loop through them again!');
+      localStorage.removeItem('lunaar_seen_bots');
+      unseenBots = activePool;
     }
 
     // Filter by gender preference (strictly respected)
