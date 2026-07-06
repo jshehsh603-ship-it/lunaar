@@ -1472,6 +1472,38 @@ const adminAuthMiddleware = (req: express.Request, res: express.Response, next: 
   next();
 };
 
+// Credentials check prior to account deletion
+app.post('/api/users/delete-confirm', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    res.status(400).json({ success: false, error: 'Email and password are required.' });
+    return;
+  }
+
+  const user = await db.getUserByEmail(email);
+  if (!user || user.password !== password) {
+    res.status(400).json({ success: false, error: 'Invalid password. Please try again.' });
+    return;
+  }
+
+  res.json({ success: true });
+});
+
+// Perform permanent account deletion
+app.delete('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const success = await db.deleteUser(id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Admin Login Route (No Auth required)
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
@@ -1511,6 +1543,16 @@ app.get('/api/admin/stats', async (req, res) => {
     totalReports: reports.length,
     unresolvedReports: reports.length
   });
+});
+
+// Admin Deleted Users List
+app.get('/api/admin/deleted-users', async (req, res) => {
+  try {
+    const deleted = await db.getDeletedUsers();
+    res.json(deleted);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Admin Users List

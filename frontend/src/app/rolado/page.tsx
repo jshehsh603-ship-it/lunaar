@@ -66,11 +66,12 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'reports' | 'sockets' | 'vip' | 'bots'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'deleted' | 'reports' | 'sockets' | 'vip' | 'bots'>('overview');
   
   // Data States
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [deletedUsers, setDeletedUsers] = useState<{ id: string; username: string; email?: string; deletedAt: string }[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [sockets, setSockets] = useState<SocketRecord[]>([]);
   
@@ -153,9 +154,10 @@ export default function AdminPage() {
     if (!isAdminLoggedIn) return;
     setLoading(true);
     try {
-      const [statsRes, usersRes, reportsRes, socketsRes, botsRes] = await Promise.all([
+      const [statsRes, usersRes, deletedRes, reportsRes, socketsRes, botsRes] = await Promise.all([
         adminFetch('/api/admin/stats'),
         adminFetch('/api/admin/users'),
+        adminFetch('/api/admin/deleted-users'),
         adminFetch('/api/admin/reports'),
         adminFetch('/api/admin/sockets'),
         adminFetch('/api/admin/bots')
@@ -163,6 +165,7 @@ export default function AdminPage() {
 
       if (statsRes.ok) setStats(await statsRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
+      if (deletedRes.ok) setDeletedUsers(await deletedRes.json());
       if (reportsRes.ok) setReports(await reportsRes.json());
       if (socketsRes.ok) setSockets(await socketsRes.json());
       if (botsRes.ok) setBots(await botsRes.json());
@@ -622,6 +625,18 @@ export default function AdminPage() {
                 </button>
 
                 <button
+                  onClick={() => { audioSynth.playClick(); setActiveTab('deleted'); }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
+                    activeTab === 'deleted' 
+                      ? 'bg-brand-primary text-white shadow-premium' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                  <span>Deleted Users ({deletedUsers.length})</span>
+                </button>
+
+                <button
                   onClick={() => { audioSynth.playClick(); setActiveTab('vip'); }}
                   className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                     activeTab === 'vip' 
@@ -980,6 +995,46 @@ export default function AdminPage() {
               )}
 
               {/* TAB 3: ABUSE REPORTS */}
+              {activeTab === 'deleted' && (
+                <div className="flex flex-col gap-4 w-full animate-fadeIn overflow-hidden">
+                  <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tight text-white font-sans text-left">Deleted Accounts</h2>
+                    <p className="text-xs text-slate-400 mt-0.5 text-left">Audit log of accounts permanently deleted by the users themselves.</p>
+                  </div>
+
+                  <div className="bg-slate-900 border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/5">
+                        <tr>
+                          <th className="py-4 px-6">User ID</th>
+                          <th className="py-4 px-6">Username</th>
+                          <th className="py-4 px-6">Email Address</th>
+                          <th className="py-4 px-6">Deletion Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {deletedUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center font-bold text-slate-500">
+                              No deleted accounts found in the audit logs.
+                            </td>
+                          </tr>
+                        ) : (
+                          deletedUsers.map((u) => (
+                            <tr key={u.id} className="hover:bg-white/5 transition">
+                              <td className="py-3.5 px-6 font-mono text-slate-400 select-all">{u.id}</td>
+                              <td className="py-3.5 px-6 font-bold text-white">{u.username}</td>
+                              <td className="py-3.5 px-6 text-slate-300">{u.email || 'N/A'}</td>
+                              <td className="py-3.5 px-6 text-slate-400">{new Date(u.deletedAt).toLocaleString()}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'reports' && (
                 <div className="flex flex-col gap-4 w-full animate-fadeIn overflow-hidden">
                   <div>

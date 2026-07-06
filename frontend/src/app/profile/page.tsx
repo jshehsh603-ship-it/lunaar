@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { 
   User, Shield, Sparkles, Heart, Globe, Star, Check, Camera, 
-  Settings, Award, RefreshCw, Mail, Calendar, ArrowLeft, Trash2
+  Settings, Award, RefreshCw, Mail, Calendar, ArrowLeft, Trash2, X, Loader2
 } from 'lucide-react';
 import audioSynth from '../../components/AudioEffects';
 import { COUNTRIES } from '../../constants/countries';
@@ -30,6 +30,14 @@ function ProfileContent() {
   const [gender, setGender] = useState<'male' | 'female' | 'everyone'>('everyone');
   const [country, setCountry] = useState('World');
   const [isPremium, setIsPremium] = useState(false);
+
+  // Account Deletion States
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Stats info
   const [followers, setFollowers] = useState(48);
@@ -85,6 +93,82 @@ function ProfileContent() {
   }, []);
 
 
+
+  // Account Deletion Handlers
+  const handleVerifyPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    audioSynth.playClick();
+    setDeleteError('');
+    setDeleteLoading(true);
+
+    try {
+      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
+        ? 'http://localhost:3001'
+        : window.location.origin;
+
+      const res = await fetch(`${backendUrl}/api/users/delete-confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: deleteEmail, password: deletePassword })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowVerifyModal(false);
+        setShowConfirmModal(true);
+      } else {
+        setDeleteError(data.error || 'Invalid password. Please try again.');
+      }
+    } catch (err) {
+      setDeleteError('Connection error. Please try again.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    audioSynth.playClick();
+    setDeleteLoading(true);
+
+    try {
+      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
+        ? 'http://localhost:3001'
+        : window.location.origin;
+
+      const res = await fetch(`${backendUrl}/api/users/${profile.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Your account has been deleted successfully.');
+        localStorage.removeItem('lunaar_user');
+        localStorage.removeItem('lunaar_token');
+        
+        // Remove from accounts map as well
+        if (profile.email) {
+          const accountsStr = localStorage.getItem('lunaar_accounts');
+          if (accountsStr) {
+            try {
+              const accounts = JSON.parse(accountsStr);
+              delete accounts[profile.email];
+              localStorage.setItem('lunaar_accounts', JSON.stringify(accounts));
+            } catch (e) {}
+          }
+        }
+
+        router.push('/');
+      } else {
+        alert(data.error || 'Failed to delete account. Please try again.');
+      }
+    } catch (err) {
+      alert('Connection error. Please try again.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   // Save changes
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -211,6 +295,22 @@ function ProfileContent() {
                 </span>
               </div>
             </div>
+            
+            <div className="h-px bg-white/5 my-2"></div>
+            <button
+              type="button"
+              onClick={() => {
+                audioSynth.playClick();
+                setDeleteEmail(profile.email || '');
+                setDeletePassword('');
+                setDeleteError('');
+                setShowVerifyModal(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete My Account</span>
+            </button>
           </div>
         </div>
 
@@ -309,6 +409,110 @@ function ProfileContent() {
         </div>
 
       </main>
+
+      {/* SECURITY VERIFICATION MODAL */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-[32px] w-full max-w-[420px] p-8 border border-slate-100 shadow-2xl relative text-slate-800 animate-scaleUp">
+            <button
+              onClick={() => { audioSynth.playClick(); setShowVerifyModal(false); }}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-2xl font-extrabold text-center text-rose-600 mb-1">
+              Lunaar <span className="text-slate-800">Login</span>
+            </h2>
+            <p className="text-xs font-bold text-center text-slate-500 mb-6">
+              For your security, please login to continue
+            </p>
+
+            <form onSubmit={handleVerifyPassword} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  disabled
+                  value={deleteEmail}
+                  className="w-full py-3 px-4 rounded-xl bg-slate-50 text-slate-500 border border-slate-200 outline-none text-xs font-semibold cursor-not-allowed"
+                  placeholder="Email Address"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full py-3 px-4 rounded-xl bg-slate-50 text-slate-800 border border-slate-200 focus:border-rose-500 outline-none text-xs font-semibold"
+                  placeholder="Password"
+                />
+              </div>
+
+              {deleteError && (
+                <p className="text-rose-600 text-xs font-bold text-center">{deleteError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={deleteLoading}
+                className="w-full py-3.5 mt-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm transition active:scale-[0.98] shadow-md shadow-rose-600/20 flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Log In</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl w-full max-w-[550px] p-8 border border-slate-100 shadow-2xl relative text-slate-800 animate-scaleUp">
+            <button
+              onClick={() => { audioSynth.playClick(); setShowConfirmModal(false); }}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-2xl font-black text-slate-850 text-slate-800 text-center mb-6">
+              What do you want to do?
+            </h2>
+
+            <div className="flex flex-col items-center justify-center p-6 text-center border-t border-slate-100">
+              <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-[400px] mb-6">
+                Removes your account and data permanently and it's not possible to recover it
+              </p>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                className="px-8 py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm transition active:scale-[0.98] shadow-md shadow-rose-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete my account</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="relative z-10 w-full py-12 border-t border-white/5 bg-slate-950/80 text-sm text-slate-500 mt-auto">

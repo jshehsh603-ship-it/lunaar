@@ -72,6 +72,7 @@ class DatabaseService extends EventEmitter {
   private currentOnlineCount = 12450;
   private reports: { id: string; reporterId: string; reportedId: string; reason: string; timestamp: Date }[] = [];
   private videoBots: VideoBot[] = [];
+  private deletedUsers = new Map<string, { id: string; username: string; email?: string; deletedAt: string }>();
 
   constructor() {
     super();
@@ -193,6 +194,16 @@ class DatabaseService extends EventEmitter {
           user_b VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
           duration_seconds INT NOT NULL,
           timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 8. Deleted Users table
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS deleted_users (
+          id VARCHAR(255) PRIMARY KEY,
+          username VARCHAR(255) NOT NULL,
+          email VARCHAR(255),
+          deleted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -352,6 +363,53 @@ class DatabaseService extends EventEmitter {
     });
 
     this.videoBots = [];
+  }
+
+  // Account Deletion methods
+  async deleteUser(userId: string): Promise<boolean> {
+    if (this.pool) {
+      // 1. Fetch user to store snapshot in audit table
+      const userRes = await this.pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      const user = userRes.rows[0];
+      if (!user) return false;
+
+      // 2. Insert snapshot into deleted_users audit log
+      await this.pool.query(
+        'INSERT INTO deleted_users (id, username, email) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING',
+        [user.id, user.username, user.email]
+      );
+
+      // 3. Delete from users table (triggering cascading deletes)
+      await this.pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      return true;
+    }
+
+    // In-memory fallback
+    const user = this.users.get(userId);
+    if (!user) return false;
+
+    this.deletedUsers.set(userId, {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      deletedAt: new Date().toISOString()
+    });
+
+    this.users.delete(userId);
+    return true;
+  }
+
+  async getDeletedUsers(): Promise<Array<{ id: string; username: string; email?: string; deletedAt: string }>> {
+    if (this.pool) {
+      const res = await this.pool.query('SELECT * FROM deleted_users ORDER BY deleted_at DESC');
+      return res.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        email: row.email || undefined,
+        deletedAt: row.deleted_at.toISOString()
+      }));
+    }
+    return Array.from(this.deletedUsers.values());
   }
 
   // User methods
@@ -766,14 +824,6 @@ class DatabaseService extends EventEmitter {
       this.saveBotsToFile();
     }
     return deleted;
-  }
-
-  async deleteUser(id: string): Promise<boolean> {
-    if (this.pool) {
-      const res = await this.pool.query('DELETE FROM users WHERE id = $1', [id]);
-      return (res.rowCount ?? 0) > 0;
-    }
-    return this.users.delete(id);
   }
 }
 
