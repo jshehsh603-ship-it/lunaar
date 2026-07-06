@@ -18,7 +18,7 @@ function ActivateContent() {
 
   const getApiUrl = () => {
     if (typeof window === 'undefined') return '';
-    return window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin;
+    return (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
   };
 
   useEffect(() => {

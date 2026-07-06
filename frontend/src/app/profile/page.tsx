@@ -102,9 +102,7 @@ function ProfileContent() {
     setDeleteLoading(true);
 
     try {
-      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
-        ? 'http://localhost:3001'
-        : window.location.origin;
+      const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
 
       const res = await fetch(`${backendUrl}/api/users/delete-confirm`, {
         method: 'POST',
@@ -133,9 +131,7 @@ function ProfileContent() {
     setDeleteLoading(true);
 
     try {
-      const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
-        ? 'http://localhost:3001'
-        : window.location.origin;
+      const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
 
       const res = await fetch(`${backendUrl}/api/users/${profile.id}`, {
         method: 'DELETE'
