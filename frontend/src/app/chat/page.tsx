@@ -1803,10 +1803,31 @@ export default function ChatPage() {
   const handleSubmitReport = () => {
     if (!partnerProfile) return;
     
+    // Capture screenshot of remote video
+    let screenshot: string | null = null;
+    if (remoteVideoRef.current) {
+      try {
+        const video = remoteVideoRef.current;
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, width, height);
+          screenshot = canvas.toDataURL('image/jpeg', 0.85);
+        }
+      } catch (err) {
+        console.error('Failed to capture remote video snapshot for report:', err);
+      }
+    }
+
     if (socketRef.current) {
       socketRef.current.emit('report_user', {
         targetUserId: partnerProfile.id,
-        reason: reportReason
+        reason: reportReason,
+        screenshot: screenshot
       });
     }
 
@@ -2226,6 +2247,7 @@ export default function ChatPage() {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                crossOrigin="anonymous"
                 onTimeUpdate={handleRemoteVideoTimeUpdate}
                 className={`w-full h-full object-cover lg:object-contain transition-all duration-500 ${
                   isMatched ? 'opacity-100' : 'opacity-0'

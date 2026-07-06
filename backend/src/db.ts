@@ -70,7 +70,7 @@ class DatabaseService extends EventEmitter {
   private matches: MatchHistory[] = [];
   private blocked = new Map<string, Set<string>>();
   private currentOnlineCount = 12450;
-  private reports: { id: string; reporterId: string; reportedId: string; reason: string; timestamp: Date }[] = [];
+  private reports: { id: string; reporterId: string; reportedId: string; reason: string; timestamp: Date; screenshotUrl?: string }[] = [];
   private videoBots: VideoBot[] = [];
   private deletedUsers = new Map<string, { id: string; username: string; email?: string; deletedAt: string }>();
 
@@ -182,8 +182,12 @@ class DatabaseService extends EventEmitter {
           reporter_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           reported_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           reason TEXT NOT NULL,
-          timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          screenshot_url TEXT
         );
+      `);
+      await this.pool.query(`
+        ALTER TABLE reports ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
       `);
 
       // 7. Match History table
@@ -784,14 +788,32 @@ class DatabaseService extends EventEmitter {
     return (this.blocked.get(userA)?.has(userB) || this.blocked.get(userB)?.has(userA)) || false;
   }
 
-  async reportUser(reporterId: string, reportedId: string, reason: string): Promise<void> {
+  async reportUser(reporterId: string, reportedId: string, reason: string, screenshot?: string): Promise<void> {
     const reportId = `rep_${Math.random().toString(36).substring(2, 11)}`;
     const timestamp = new Date();
+    let screenshotUrl: string | undefined = undefined;
+
+    if (screenshot) {
+      try {
+        const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const uploadDir = path.join(__dirname, '../uploads/reports');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const filePath = path.join(uploadDir, `${reportId}.jpg`);
+        fs.writeFileSync(filePath, buffer);
+        screenshotUrl = `/uploads/reports/${reportId}.jpg`;
+      } catch (err) {
+        console.error('Failed to save report screenshot:', err);
+      }
+    }
+
     if (this.pool) {
       await this.pool.query(`
-        INSERT INTO reports (id, reporter_id, reported_id, reason, timestamp)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [reportId, reporterId, reportedId, reason, timestamp]);
+        INSERT INTO reports (id, reporter_id, reported_id, reason, timestamp, screenshot_url)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [reportId, reporterId, reportedId, reason, timestamp, screenshotUrl]);
       await this.blockUser(reporterId, reportedId);
       return;
     }
@@ -801,9 +823,62 @@ class DatabaseService extends EventEmitter {
       reporterId,
       reportedId,
       reason,
-      timestamp
+      timestamp,
+      screenshotUrl
     });
     this.blockUser(reporterId, reportedId);
+  }
+
+  async getReports(): Promise<Array<{ id: string; reporterId: string; reportedId: string; reason: string; timestamp: Date; screenshotUrl?: string }>> {
+    if (this.pool) {
+      const res = await this.pool.query('SELECT * FROM reports ORDER BY timestamp DESC');
+      return res.rows.map(row => ({
+        id: row.id,
+        reporterId: row.reporter_id,
+        reportedId: row.reported_id,
+        reason: row.reason,
+        timestamp: new Date(row.timestamp),
+        screenshotUrl: row.screenshot_url || undefined
+      }));
+    }
+    return this.reports;
+  }
+
+  async resolveReport(reportId: string): Promise<boolean> {
+    if (this.pool) {
+      // Fetch report first to clean up its file snapshot if it exists
+      const reportRes = await this.pool.query('SELECT screenshot_url FROM reports WHERE id = $1', [reportId]);
+      const report = reportRes.rows[0];
+      if (report && report.screenshot_url) {
+        try {
+          const filePath = path.join(__dirname, '..', report.screenshot_url);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {
+          console.error('Failed to delete report screenshot file:', e);
+        }
+      }
+
+      const res = await this.pool.query('DELETE FROM reports WHERE id = $1', [reportId]);
+      return (res.rowCount ?? 0) > 0;
+    }
+
+    const index = this.reports.findIndex(r => r.id === reportId);
+    if (index !== -1) {
+      const report = this.reports[index];
+      if (report.screenshotUrl) {
+        try {
+          const filePath = path.join(__dirname, '..', report.screenshotUrl);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {}
+      }
+      this.reports.splice(index, 1);
+      return true;
+    }
+    return false;
   }
 
   // Video Bots Methods

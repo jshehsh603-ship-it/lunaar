@@ -336,11 +336,11 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Report User
-    socket.on('report_user', async (data: { targetUserId: string; reason: string }) => {
+    socket.on('report_user', async (data: { targetUserId: string; reason: string; screenshot?: string }) => {
       const userId = socketUserMap.get(socket.id);
       if (!userId) return;
 
-      await db.reportUser(userId, data.targetUserId, data.reason);
+      await db.reportUser(userId, data.targetUserId, data.reason, data.screenshot);
       socket.emit('user_reported', { reportedUserId: data.targetUserId });
 
       // If matching, skip them immediately

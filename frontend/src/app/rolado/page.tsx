@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Users, Radio, FileText, LayoutDashboard, AlertCircle, 
   Trash2, ShieldAlert, Crown, LogOut, RefreshCw, Search, 
-  ArrowLeft, Lock, CheckCircle2, ShieldOff, Video, Upload
+  ArrowLeft, Lock, CheckCircle2, ShieldOff, Video, Upload, X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import audioSynth from '../../components/AudioEffects';
@@ -46,6 +46,7 @@ interface ReportRecord {
   timestamp: string;
   reporterName: string;
   reportedName: string;
+  screenshotUrl?: string;
 }
 
 interface SocketRecord {
@@ -70,6 +71,7 @@ export default function AdminPage() {
   
   // Data States
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [selectedReportScreenshot, setSelectedReportScreenshot] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<{ id: string; username: string; email?: string; deletedAt: string }[]>([]);
   const [reports, setReports] = useState<ReportRecord[]>([]);
@@ -1049,6 +1051,7 @@ export default function AdminPage() {
                           <th className="p-4">Reported Stranger</th>
                           <th className="p-4">Flagged By</th>
                           <th className="p-4">Abuse Reason</th>
+                          <th className="p-4">Snapshot</th>
                           <th className="p-4">Incident Timestamp</th>
                           <th className="p-4 text-right">Moderation Action</th>
                         </tr>
@@ -1073,6 +1076,32 @@ export default function AdminPage() {
                                 <span className="inline-flex items-center px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-brand-primary text-[10px] font-bold uppercase tracking-wide">
                                   {rep.reason}
                                 </span>
+                              </td>
+                              <td className="p-4">
+                                {rep.screenshotUrl ? (
+                                  <div 
+                                    className="relative group cursor-pointer w-16 h-10 rounded-lg border border-white/10 overflow-hidden bg-slate-950/60 shadow-sm"
+                                    onClick={() => {
+                                      audioSynth.playClick();
+                                      setSelectedReportScreenshot(rep.screenshotUrl || null);
+                                    }}
+                                  >
+                                    <img 
+                                      src={
+                                        (typeof window !== 'undefined'
+                                          ? (window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin)
+                                          : 'http://localhost:3001') + rep.screenshotUrl
+                                      } 
+                                      className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                                      alt="Report Snapshot" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                      <Search className="w-3 h-3 text-white" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">N/A</span>
+                                )}
                               </td>
                               <td className="p-4 text-slate-400 font-semibold">
                                 {new Date(rep.timestamp).toLocaleString()}
@@ -1745,6 +1774,35 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* FULLSCREEN PREVIEW MODAL ZOOM OVERLAY */}
+      {selectedReportScreenshot && (
+        <div 
+          className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn cursor-zoom-out" 
+          onClick={() => setSelectedReportScreenshot(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full bg-slate-900 border border-white/10 rounded-2xl p-2 shadow-2xl animate-scaleUp cursor-default" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedReportScreenshot(null)}
+              className="absolute -top-10 right-0 p-2 text-slate-400 hover:text-white transition flex items-center gap-1.5 font-bold text-xs"
+            >
+              <X className="w-4 h-4" /> Close Preview
+            </button>
+            <img 
+              src={
+                (typeof window !== 'undefined'
+                  ? (window.location.port === '3000' ? 'http://localhost:3001' : window.location.origin)
+                  : 'http://localhost:3001') + selectedReportScreenshot
+              } 
+              className="w-full h-auto max-h-[80vh] object-contain rounded-xl bg-slate-955 bg-slate-950" 
+              alt="Abuse Snapshot Proof" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

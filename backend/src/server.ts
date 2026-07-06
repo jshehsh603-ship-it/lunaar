@@ -1533,7 +1533,7 @@ app.use('/api/admin', adminAuthMiddleware);
 // Admin Stats
 app.get('/api/admin/stats', async (req, res) => {
   const users = await db.getAllUsers();
-  const reports = (db as any).reports || [];
+  const reports = await db.getReports();
   res.json({
     totalUsers: users.length,
     vipUsers: users.filter(u => u.isPremium).length,
@@ -1667,7 +1667,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 
 // Admin Reports List
 app.get('/api/admin/reports', async (req, res) => {
-  const reports = (db as any).reports || [];
+  const reports = await db.getReports();
   
   const detailedReports = await Promise.all(reports.map(async (r: any) => {
     const reporter = await db.getUser(r.reporterId);
@@ -1695,15 +1695,17 @@ app.get('/api/admin/reports', async (req, res) => {
 });
 
 // Admin Resolve Report (Dismisses it)
-app.post('/api/admin/reports/:id/resolve', (req, res) => {
+app.post('/api/admin/reports/:id/resolve', async (req, res) => {
   const { id } = req.params;
-  const reports = (db as any).reports || [];
-  const index = reports.findIndex((r: any) => r.id === id);
-  if (index !== -1) {
-    reports.splice(index, 1);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ success: false, error: 'Report not found.' });
+  try {
+    const success = await db.resolveReport(id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: 'Report not found.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
