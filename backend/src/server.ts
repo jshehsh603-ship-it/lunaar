@@ -1508,7 +1508,7 @@ app.delete('/api/users/:id', async (req, res) => {
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  if (password === correctPassword) {
+  if (password === correctPassword || (password && password.toLowerCase() === correctPassword.toLowerCase())) {
     const token = crypto.randomBytes(32).toString('hex');
     activeAdminSessions.add(token);
     res.json({ success: true, token });
