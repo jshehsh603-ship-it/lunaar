@@ -61,7 +61,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
     if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD&components=buttons&disable-funding=paypal,paylater,venmo`;
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD`;
       script.async = true;
       script.onload = initializeButtons;
       document.body.appendChild(script);
@@ -87,13 +87,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
     containerRef.current.innerHTML = '';
 
     try {
-      (window as any).paypal.Buttons({
-        fundingSource: (window as any).paypal.FUNDING.CARD,
-        style: {
-          color: 'black',
-          shape: 'rect',
-          label: 'checkout'
-        },
+      const orderConfig = {
         createOrder: (data: any, actions: any) => {
           const amount = plan === 'week' ? '8.99' : '24.99';
           return actions.order.create({
@@ -142,7 +136,33 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
           console.error('PayPal Buttons error', err);
           onError('PayPal transaction encountered an error. Please try again.');
         }
-      }).render(containerRef.current);
+      };
+
+      const cardBtn = (window as any).paypal.Buttons({
+        fundingSource: (window as any).paypal.FUNDING.CARD,
+        style: {
+          color: 'black',
+          shape: 'rect',
+          label: 'checkout'
+        },
+        ...orderConfig
+      });
+
+      if (cardBtn.isEligible()) {
+        cardBtn.render(containerRef.current);
+      } else {
+        console.log('[PayPal] Card button is not eligible in this country, falling back to PayPal button.');
+        const paypalBtn = (window as any).paypal.Buttons({
+          fundingSource: (window as any).paypal.FUNDING.PAYPAL,
+          style: {
+            color: 'gold',
+            shape: 'rect',
+            label: 'paypal'
+          },
+          ...orderConfig
+        });
+        paypalBtn.render(containerRef.current);
+      }
     } catch (e) {
       console.error('Error rendering PayPal buttons:', e);
     }
