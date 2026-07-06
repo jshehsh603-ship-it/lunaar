@@ -1,0 +1,53 @@
+[
+  {
+    "id": "sim_xyvahitcw",
+    "username": "mama",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    "bio": "Let’s hang out and chat! 🎥",
+    "gender": "female",
+    "country": "Australia",
+    "interests": [],
+    "videoUrl": "/uploads/bot-video-1782240278805-317673258.mp4",
+    "createdAt": "2026-06-23T18:44:52.871Z",
+    "chatEnabled": false,
+    "chatMessages": [],
+    "isPremium": true,
+    "skipAfterDuration": true,
+    "skipDurationSeconds": 7,
+    "skipNearEnd": false
+  },
+  {
+    "id": "sim_cjgsg0l8y",
+    "username": "lalala",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    "bio": "Let’s hang out and chat! 🎥",
+    "gender": "female",
+    "country": "Germany",
+    "interests": [],
+    "videoUrl": "/uploads/bot-video-1782240302260-620700817.mp4",
+    "createdAt": "2026-06-23T18:45:12.734Z",
+    "chatEnabled": false,
+    "chatMessages": [],
+    "isPremium": true,
+    "skipAfterDuration": false,
+    "skipDurationSeconds": 30,
+    "skipNearEnd": true
+  },
+  {
+    "id": "sim_os78jykqp",
+    "username": "papapa",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    "bio": "Let’s hang out and chat! 🎥",
+    "gender": "female",
+    "country": "United States",
+    "interests": [],
+    "videoUrl": "/uploads/bot-video-1782240380024-301129977.mp4",
+    "createdAt": "2026-06-23T18:46:30.717Z",
+    "chatEnabled": false,
+    "chatMessages": [],
+    "isPremium": false,
+    "skipAfterDuration": true,
+    "skipDurationSeconds": 7,
+    "skipNearEnd": false
+  }
+]
