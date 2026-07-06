@@ -29,9 +29,28 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sdkReady, setSdkReady] = useState(false);
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
 
   useEffect(() => {
-    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || 'your-paypal-sandbox-client-id-here';
+    const fetchConfig = async () => {
+      try {
+        const backendUrl = typeof window !== 'undefined' && window.location.port === '3000'
+          ? 'http://localhost:3001'
+          : window.location.origin;
+        const res = await fetch(`${backendUrl}/api/config/paypal`);
+        const data = await res.json();
+        setPaypalClientId(data.clientId);
+      } catch (err) {
+        console.error('Failed to fetch PayPal config:', err);
+        setPaypalClientId('your-paypal-sandbox-client-id-here');
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (!paypalClientId) return;
+
     const scriptId = 'paypal-sdk-script';
     let script = document.getElementById(scriptId) as HTMLScriptElement;
 
@@ -42,7 +61,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
     if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD`;
       script.async = true;
       script.onload = initializeButtons;
       document.body.appendChild(script);
@@ -59,7 +78,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
         script.removeEventListener('load', initializeButtons);
       }
     };
-  }, []);
+  }, [paypalClientId]);
 
   useEffect(() => {
     if (!sdkReady || !(window as any).paypal || !containerRef.current) return;

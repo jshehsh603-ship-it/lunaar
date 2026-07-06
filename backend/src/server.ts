@@ -972,6 +972,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', uptime: process.uptime() });
 });
 
+// PayPal Config endpoint
+app.get('/api/config/paypal', (req, res) => {
+  res.json({ clientId: process.env.PAYPAL_CLIENT_ID || 'your-paypal-sandbox-client-id-here' });
+});
+
 // Diagnostic Test Email Endpoint
 app.get('/api/test-email', async (req, res) => {
   const { to } = req.query;
