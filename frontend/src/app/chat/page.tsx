@@ -78,6 +78,7 @@ export default function ChatPage() {
   const [maleRatio, setMaleRatio] = useState(0.70); // Fluctuates between 65% and 75%
   const [privateRoomId, setPrivateRoomId] = useState<string | null>(null);
   const [botsEnabled, setBotsEnabled] = useState(true);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [botPool, setBotPool] = useState<any[]>([]);
 
   // Device controls
@@ -405,10 +406,21 @@ export default function ChatPage() {
 
     socket.on('connect', () => {
       console.log('Socket connected to backend server.');
+      setSocketConnected(true);
       socket.emit('register_user', {
         userId: userObj.id,
         profile: userObj
       });
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected.');
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+      setSocketConnected(false);
     });
 
     socket.on('registration_success', (profile) => {
@@ -2225,6 +2237,26 @@ export default function ChatPage() {
         <div className={`flex-grow flex flex-col relative overflow-hidden bg-slate-950/40 border-r border-white/5 justify-center ${
           isMobile ? 'p-0' : 'p-4 lg:p-6'
         }`}>
+          
+          {/* Offline/Disconnected Warning Banner */}
+          {!socketConnected && (
+            <div className="absolute top-4 left-4 right-4 z-40 bg-red-500/15 backdrop-blur-md border border-red-500/25 px-5 py-3 rounded-xl flex items-center justify-between gap-3 text-red-200 text-xs font-bold font-sans shadow-lg animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
+                <span>Offline: Disconnected from signaling server. Reconnecting...</span>
+              </div>
+              <button 
+                onClick={() => {
+                  if (socketRef.current) {
+                    socketRef.current.connect();
+                  }
+                }}
+                className="px-3 py-1 rounded bg-red-500 text-white font-black uppercase text-[9px] tracking-wider hover:bg-red-600 transition active:scale-95 shadow-sm font-sans"
+              >
+                Reconnect
+              </button>
+            </div>
+          )}
           
           {/* Main Display: Remote Partner Video Feed */}
           <div 
