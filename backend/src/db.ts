@@ -93,7 +93,10 @@ class DatabaseService extends EventEmitter {
       console.log('[Database] Connecting to PostgreSQL...');
       this.pool = new Pool({
         connectionString: dbUrl,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
+        query_timeout: 10000,
+        statement_timeout: 10000
       });
 
       // Test connection
