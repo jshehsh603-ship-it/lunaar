@@ -399,7 +399,7 @@ export default function ChatPage() {
       ? (window.location.port === '3000' ? 'http://localhost:3001' : (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com'))
       : 'http://localhost:3001';
     const socket = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       forceNew: true
     });
     socketRef.current = socket;
