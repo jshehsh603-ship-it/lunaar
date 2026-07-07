@@ -1839,9 +1839,10 @@ app.get('/api/bots', async (req, res) => {
   res.json(filteredBots);
 });
 
-// Root Health Check Endpoint
+// Serve static index.html on root path
 app.get('/', (req, res) => {
-  res.json({ status: 'active', service: 'Lunaar Backend API' });
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, '../../frontend/out/index.html'));
 });
 
 // Wildcard fallback
