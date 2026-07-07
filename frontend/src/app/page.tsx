@@ -80,7 +80,7 @@ export default function LandingPage() {
 
   const getApiUrl = () => {
     if (typeof window === 'undefined') return '';
-    return (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+    return (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
   };
 
   const handleGoogleCredentialResponse = async (response: any) => {
@@ -460,7 +460,7 @@ export default function LandingPage() {
     const fetchStats = async () => {
       try {
         const backendUrl = typeof window !== 'undefined'
-          ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+          ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
           : 'http://localhost:3001';
         const res = await fetch(`${backendUrl}/api/stats`);
         if (res.ok) {
@@ -544,7 +544,7 @@ export default function LandingPage() {
         confetti({ particleCount: 50, spread: 40 });
       }
       
-      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
       fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
     }
   };

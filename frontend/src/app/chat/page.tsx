@@ -231,7 +231,7 @@ export default function ChatPage() {
   // Fetch available video bots from API
   useEffect(() => {
     const backendUrl = typeof window !== 'undefined'
-      ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+      ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
       : 'http://localhost:3001';
       
     const savedUserStr = localStorage.getItem('lunaar_user');
@@ -1141,7 +1141,7 @@ export default function ChatPage() {
           const resolveVideoUrl = (url: string) => {
             if (url.startsWith('http://') || url.startsWith('https://')) return url;
             const backendUrl = typeof window !== 'undefined'
-              ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+              ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
               : 'http://localhost:3001';
             const cleanUrl = url.startsWith('/') ? url : `/${url}`;
             return `${backendUrl}${cleanUrl}`;
@@ -2158,7 +2158,7 @@ export default function ChatPage() {
                       localStorage.setItem('lunaar_user', JSON.stringify(userObj));
                       setCurrentUser(userObj);
                       
-                      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+                      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
                       fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
                     }
                   }
@@ -2181,7 +2181,7 @@ export default function ChatPage() {
                       localStorage.setItem('lunaar_user', JSON.stringify(userObj));
                       setCurrentUser(userObj);
                       
-                      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+                      const backendUrl = (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
                       fetch(`${backendUrl}/api/admin/users/${userObj.id}/vip`, { method: 'POST' }).catch(() => {});
                     }
                   }

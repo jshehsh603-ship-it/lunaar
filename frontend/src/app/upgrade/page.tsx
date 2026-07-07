@@ -34,7 +34,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+        const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
         const res = await fetch(`${backendUrl}/api/config/paypal`);
         const data = await res.json();
         setPaypalClientId(data.clientId);
@@ -102,7 +102,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({
         onApprove: async (data: any, actions: any) => {
           setIsProcessing(true);
           try {
-            const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+            const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
             const res = await fetch(`${backendUrl}/api/payments/verify`, {
               method: 'POST',
               headers: {
@@ -329,7 +329,7 @@ function UpgradeContent() {
     setIsProcessing(true);
 
     try {
-      const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+      const backendUrl = typeof window !== 'undefined' && (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
       const response = await fetch(`${backendUrl}/api/payments/process-card`, {
         method: 'POST',
         headers: {

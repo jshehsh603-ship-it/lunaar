@@ -106,14 +106,14 @@ export default function AdminPage() {
 
   const getApiUrl = () => {
     if (typeof window === 'undefined') return '';
-    return (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin;
+    return (window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin;
   };
 
   const resolveBotVideoUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     const backendUrl = typeof window !== 'undefined'
-      ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+      ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
       : 'http://localhost:3001';
     const cleanUrl = url.startsWith('/') ? url : `/${url}`;
     return `${backendUrl}${cleanUrl}`;
@@ -1089,7 +1089,7 @@ export default function AdminPage() {
                                     <img 
                                       src={
                                         (typeof window !== 'undefined'
-                                          ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+                                          ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
                                           : 'http://localhost:3001') + rep.screenshotUrl
                                       } 
                                       className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
@@ -1794,7 +1794,7 @@ export default function AdminPage() {
             <img 
               src={
                 (typeof window !== 'undefined'
-                  ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? 'https://lunaar-backend.onrender.com' : window.location.origin)
+                  ? ((window.location.port === '3000' || window.location.hostname.includes('vercel.app')) ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lunaar-backend.onrender.com') : window.location.origin)
                   : 'http://localhost:3001') + selectedReportScreenshot
               } 
               className="w-full h-auto max-h-[80vh] object-contain rounded-xl bg-slate-955 bg-slate-950" 
